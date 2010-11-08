@@ -1,0 +1,109 @@
+CHANGELOG:
+
+v1.0 - External Release Candidate
+  Changes:
+    - Added NAMESPACE support, though we hate it.
+    - As promised at 0.9, rem is now rem.dyad,and rem.ego is now rem.  This
+      better reflects the actual nature of the models in question (since the
+      old "rem" fit the dyadic special case, and "rem.ego" had become a
+      generic routine).  Likewise, internal files, routines, and help
+      information has been altered to reflect this change.
+    - Set the BSIR example for rem.dyad not to run by default (it takes too
+      long for CRAN).
+    - Set BPM as the default estimation method for both rem and rem.dyad.  All
+      tests so far show superior performance versus the MLR (even on 
+      frequentist grounds), and there seems no reason not to switch.
+  Bug Fixes:
+    - Fixed an effect labeling issue in rem.  [Submitted by Chris DuBois]
+    - Fixed a minor labeling bug in rem.ego.
+
+v0.9-2 - Internal Release
+  Bug Fixes:
+    - Minor documentation updates for rem and rem.ego.
+
+v0.9-1 - Internal Release
+  Bug Fixes:
+    - rem.ego failed on BSIR with some degenerate models.
+
+v0.9 - Internal Release
+  New Features:
+    - rem.ego now supports fully Bayesian analysis using MCMC and SIR.
+    - Verbosity is now selectable in rem.ego.
+  Changes:
+    - Backend deviance routines have been renamed to be consistent with the
+      upcoming 1.0 switch.
+    - rem.ego deviance calculations are now backended (and are much faster).
+  Bug Fixes:
+    - Made a minor adjustment to the BSIR weights in rem.
+  Notes:
+    - For 1.0, function nomenclature and internal organization will change.
+      rem.ego (which is really a generic rem routine and not "egocentric" in
+      any important sense) will become "rem."  The current rem (which is 
+      actually a special case function for dyadic data) will become "rem.dyad."
+      This will also be reflected in some changes to the package structure,
+      none of which will be internally visible.
+
+v0.8 - Internal Release
+  New Features:
+    - Interval likelihood now supported in rem.ego.
+    - rem.ego now supports very primitive Bayesian estimation; specifically,
+      it is now possible to obtain posterior mode estimates (under independent
+      t parameter priors), along with (hypothetically) asymptotic posterior
+      standard deviations.  The rem.ego summary method will automatically
+      adjust its presentation based on the type of estimation employed.
+    - rem.ego now supports exogenous events; these should be indicated by event
+      codes of 0 in the input data.  These could be handled indirectly by the
+      user previously in the ordinal case, but are now managed internally (and
+      their contribution to the interval likelihood is taken into account).
+    - rem.ego is now documented.
+
+v0.7 - Internal Release
+  Bug Fixes:
+    - Protection stack was overflowing for large models with triad census terms.
+    - rem_n2llik_samp_R was not working (internal coercion problem).
+    
+v0.6 - Internal Release
+  Bug Fixes:
+    - The PSAB-BY term was not being detected in rem.
+    - In some cases, rem did not generate necessary triad statistics (depending
+      on what other terms were in a model that included triads), and could
+      crash.
+
+v0.5 - Internal Release
+  New Functions:
+    - rem.ego: analysis of egocentric relational event sequences.  (Print and
+      summary methods also included).
+  Changes:
+    - The relevent package now depends on the trust and sna packages.
+    
+v0.4 - Internal Release
+  New Features:
+    - Support for multiple covariates (of each type) has been added to rem;
+      covariates can also vary with the event history.
+    - Support for generic eventwise covariates has been added to rem.
+    - An option has now been added to rem to allow conditioning on the first
+      portion of an event sequence.
+    - rem now calculates the AICC as an additional model selecton criterion.
+  Changes:
+    - Effects in rem are now specified via much more convenient and intuitive
+      method.  Regrettably, this will break existing code.
+
+v0.3 - Internal Release
+  New Features:
+    - rem now supports use of full timing information (previously, only the
+      ordinal likelihood was used).
+    - man page now added for rem.
+
+v0.2-1 - Internal Release
+  Changes:
+    - Removed some trace messages in accum_ps_R.
+  Bug Fixes:
+    - Normalized total degree stats were off by a factor of 2 (normalization
+      was inadvertantly by number of events, not twice the number of events).
+      This had the main effect of cutting the estimated parameter values in
+      half, where applicable.
+    - The NTDegRec effect label had a typo.
+
+v0.2 - Internal Release
+
+v0.1 - Initial Internal Release

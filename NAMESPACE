@@ -1,0 +1,16 @@
+#Use the relevent object
+useDynLib(relevent)
+
+#Import required symbols
+import(utils)
+
+#Export everything, because we dislike secrets
+exportPattern("^[^\\.]")
+
+#Manually register S3 methods
+S3method(print,rem.dyad)
+S3method(summary,rem.dyad)
+S3method(print,summary.rem.dyad)
+S3method(print,rem)
+S3method(summary,rem)
+S3method(print,summary.rem)
