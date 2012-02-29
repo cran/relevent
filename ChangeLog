@@ -1,5 +1,15 @@
 CHANGELOG:
 
+v1.0-1 - Bug Fixes and New Features
+  New Features:
+    - rem.dyad now allows the initial coefficient "seed" for the optimization
+      process to be manually set.
+    - When called with infinite degrees of freedom, rem.dyad will fit a model
+      with Gaussian priors.  
+  Bug Fixes:
+    - acl.ps could fail when called with an edgelist containing NAs.
+    - .onLoad had unfortunate behavior with recent R versions.
+
 v1.0 - External Release Candidate
   Changes:
     - Added NAMESPACE support, though we hate it.

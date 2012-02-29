@@ -18,8 +18,8 @@ rem(eventlist, statslist, supplist = NULL, timing = c("ordinal",
     "interval"), estimator = c("BPM", "MLE", "BMCMC", "BSIR"), 
     prior.param = list(mu = 0, sigma = 1000, nu = 4), mcmc.draws = 1500, 
     mcmc.thin = 25, mcmc.burn = 2000, mcmc.chains = 3, mcmc.sd = 0.05, 
-    mcmc.ind.int = 50, mcmc.ind.sd = 10, sir.draws = 1000, sir.expand = 10, 
-    sir.nu = 4, verbose = FALSE)
+    mcmc.ind.int = 50, mcmc.ind.sd = 10, sir.draws = 1000, 
+    sir.expand = 10, sir.nu = 4, verbose = FALSE)
 \method{print}{rem}(x, ...)
 \method{summary}{rem}(object, ...) 
 }

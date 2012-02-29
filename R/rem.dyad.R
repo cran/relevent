@@ -4,7 +4,7 @@
 #
 # Written by Carter T. Butts <buttsc@uci.edu>.
 #
-# Last Modified 11/08/10
+# Last Modified 2/29/12
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/relevent package
@@ -117,7 +117,7 @@ acl.deg<-function(acl,n,cmode=c("in","out","total")){
 #don't want to use all the stats at once, although we compute them all (since
 #the cost of doing so is trivial).
 accum.ps<-function(elist){
-  psmat<-matrix(.Call("accum_ps_R",elist,PACKAGE="relevent"),nc=13)
+  psmat<-matrix(.Call("accum_ps_R",elist,PACKAGE="relevent"),ncol=13)
   colnames(psmat)<-c("AB-BA","AB-B0","AB-BY","A0-X0","A0-XA","A0-XY","AB-X0", "AB-XA","AB-XB","AB-XY","A0-AY","AB-A0","AB-AY")
   rownames(psmat)<-0:NROW(elist)
   psmat
@@ -132,7 +132,7 @@ accum.ps<-function(elist){
 #        $alter
 #          $count (always 1)
 acl.ps<-function(elist){
-  n<-max(elist[,2:3])
+  n<-max(elist[,2:3],na.rm=TRUE)
   .Call("acl_ps_R",elist,n,PACKAGE="relevent")
 }
 
@@ -162,9 +162,12 @@ accum.rrl<-function(elist){
 
 
 #Log prior density for the dyadic relational event model (assumes 
-#multivariate t distribution)
+#multivariate t distribution), but will use a Gaussian limit at nu=Inf)
 rem.dyad.lprior<-function(pv,pr.mean,pr.scale,pr.nu,...){
-  sum(dt((pv-pr.mean)/pr.scale,df=pr.nu,log=TRUE))
+  if(all(pr.nu==Inf))
+    sum(dnorm((pv-pr.mean)/pr.scale,log=TRUE)-log(pr.scale))
+  else
+    sum(dt((pv-pr.mean)/pr.scale,df=pr.nu,log=TRUE)-log(pr.scale))
 }
 
 
@@ -200,7 +203,7 @@ rem.dyad.gof<-function(pv,effects,edgelist,n,acl,cumideg,cumodeg,rrl,covar,ps,tr
 
 
 #Fit the dyadic relational event model, using the specified method and effects
-rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cumodeg=NULL,rrl=NULL,covar=NULL,ps=NULL,tri=NULL,optim.method="BFGS",optim.control=list(),hessian=FALSE,sample.size=Inf,verbose=TRUE,fit.method=c("BPM","MLE","BSIR"),conditioned.obs=0,prior.mean=0,prior.scale=100,prior.nu=4,sir.draws=500,sir.expand=10,sir.nu=4,gof=TRUE){
+rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cumodeg=NULL,rrl=NULL,covar=NULL,ps=NULL,tri=NULL,optim.method="BFGS",optim.control=list(),coef.seed=NULL,hessian=FALSE,sample.size=Inf,verbose=TRUE,fit.method=c("BPM","MLE","BSIR"),conditioned.obs=0,prior.mean=0,prior.scale=100,prior.nu=4,sir.draws=500,sir.expand=10,sir.nu=4,gof=TRUE){
   require(sna)
   #t density
   dlmvt<-function(x,mu,is,ds,df){
@@ -254,19 +257,22 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
       if(length(dim(covar$CovSnd))%in%(0:1)){
         ncov[1]<-1
         covar$CovSnd<-array(covar$CovSnd,dim=c(1,1,n))
-        storage.mode(covar$CovSnd)<-"double"
+        if(storage.mode(covar$CovSnd)!="double")
+          storage.mode(covar$CovSnd)<-"double"
       }else if(length(dim(covar$CovSnd))==2){
         ncov[1]<-NCOL(covar$CovSnd)
         temp<-covar$CovSnd
         covar$CovSnd<-array(dim=c(1,ncov[1],n))
         covar$CovSnd[1,,]<-t(temp)
-        storage.mode(covar$CovSnd)<-"double"
+        if(storage.mode(covar$CovSnd)!="double")
+          storage.mode(covar$CovSnd)<-"double"
       }else if(length(dim(covar$CovSnd))==3){
         ctimed[1]<-TRUE
         ncov[1]<-dim(covar$CovSnd)[2]
         if(dim(covar$CovSnd)[1]!=NROW(edgelist))
           stop("CovSnd covariate has ",dim(covar$CovSnd)[1]," time points, but needs",NROW(edgelist),".\n",sep="")
-        storage.mode(covar$CovSnd)<-"double"
+        if(storage.mode(covar$CovSnd)!="double")
+          storage.mode(covar$CovSnd)<-"double"
       }else
         stop("CovSnd covariate has too many dimensions.\n")
     }
@@ -284,13 +290,15 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
         temp<-covar$CovRec
         covar$CovRec<-array(dim=c(1,ncov[2],n))
         covar$CovRec[1,,]<-t(temp)
-        storage.mode(covar$CovRec)<-"double"
+        if(storage.mode(covar$CovRec)!="double")
+         storage.mode(covar$CovRec)<-"double"
       }else if(length(dim(covar$CovRec))==3){
         ctimed[2]<-TRUE
         ncov[2]<-dim(covar$CovRec)[2]
         if(dim(covar$CovRec)[1]!=NROW(edgelist))
           stop("CovRec covariate has ",dim(covar$CovRec)[1]," time points, but needs",NROW(edgelist),".\n",sep="")
-        storage.mode(covar$CovRec)<-"double"
+        if(storage.mode(covar$CovRec)!="double")
+          storage.mode(covar$CovRec)<-"double"
       }else
         stop("CovRec covariate has too many dimensions.\n")
     }
@@ -302,19 +310,22 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
       if(length(dim(covar$CovInt))%in%(0:1)){
         ncov[3]<-1
         covar$CovInt<-array(covar$CovInt,dim=c(1,1,n))
-        storage.mode(covar$CovInt)<-"double"
+        if(storage.mode(covar$CovInt)!="double")
+          storage.mode(covar$CovInt)<-"double"
       }else if(length(dim(covar$CovInt))==2){
         ncov[3]<-NCOL(covar$CovInt)
         temp<-covar$CovInt
         covar$CovInt<-array(dim=c(1,ncov[3],n))
         covar$CovInt[1,,]<-t(temp)
-        storage.mode(covar$CovInt)<-"double"
+        if(storage.mode(covar$CovInt)!="double")
+          storage.mode(covar$CovInt)<-"double"
       }else if(length(dim(covar$CovInt))==3){
         ctimed[3]<-TRUE
         ncov[3]<-dim(covar$CovInt)[2]
         if(dim(covar$CovInt)[1]!=NROW(edgelist))
           stop("CovInt covariate has ",dim(covar$CovInt)[1]," time points, but needs",NROW(edgelist),".\n",sep="")
-        storage.mode(covar$CovInt)<-"double"
+        if(storage.mode(covar$CovInt)!="double")
+          storage.mode(covar$CovInt)<-"double"
       }else
         stop("CovInt covariate has too many dimensions.\n")
     }
@@ -330,17 +341,20 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
         temp<-covar$CovEvent
         covar$CovEvent<-array(dim=c(1,ncov[4],n,n))
         covar$CovEvent[1,1,,]<-temp
-        storage.mode(covar$CovEvent)<-"double"
+        if(storage.mode(covar$CovEvent)!="double")
+          storage.mode(covar$CovEvent)<-"double"
       }else if(length(dim(covar$CovEvent))==3){
         ncov[4]<-dim(covar$CovEvent)[1]
         covar$CovEvent<-array(covar$CovEvent,dim=c(1,ncov[4],n,n))
-        storage.mode(covar$CovEvent)<-"double"
+        if(storage.mode(covar$CovEvent)!="double")
+          storage.mode(covar$CovEvent)<-"double"
       }else if(length(dim(covar$CovEvent))==4){
         ctimed[4]<-TRUE
         ncov[4]<-dim(covar$CovEvent)[2]
         if(dim(covar$CovEvent)[1]!=NROW(edgelist))
           stop("CovEvent covariate has ",dim(covar$CovEvent)[1]," time points, but needs",NROW(edgelist),".\n",sep="")
-        storage.mode(covar$CovEvent)<-"double"
+        if(storage.mode(covar$CovEvent)!="double")
+          storage.mode(covar$CovEvent)<-"double"
       }else
         stop("CovEvent covariate has too many dimensions.\n")
     }
@@ -357,9 +371,10 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
   }else{
     #Perform initial setup
     stime<-proc.time()[3]
-    edgelist<-as.matrix(edgelist)
+    if(!is.matrix(edgelist))
+      edgelist<-as.matrix(edgelist)
     if(ordinal&&is.na(edgelist[NROW(edgelist),2])) #Check for timestamp row
-      edgelist<-edgelist[1:(NROW(edgelist)-1),]
+      edgelist<-edgelist[1:(NROW(edgelist)-1),,drop=FALSE]
     if(verbose)
       cat("Computing preliminary statistics\n")
     if(is.null(acl)&&any(effects[1:8]))
@@ -391,7 +406,10 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
       tail<-NULL
     }
     nparm<-sum(effects[c(1:10,15:18,22:34)])+sum(ncov)+sum(effects[19:21]*(n-1))
-    pv<-rnorm(nparm,0,0.001)
+    if(is.null(coef.seed))
+      pv<-rnorm(nparm,0,0.001)
+    else
+      pv<-coef.seed
     if(match.arg(fit.method)!="MLE"){
       prior.mean<-rep(prior.mean,length=nparm)
       prior.scale<-rep(prior.scale,length=nparm)
@@ -434,7 +452,7 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
       fit$residual.deviance<-sum(temp$residuals)
       fit$model.deviance<-nulldev-fit$residual.deviance
       fit$residuals<-temp$residuals
-      fit$predicted<-matrix(temp$predicted,nc=2)
+      fit$predicted<-matrix(temp$predicted,ncol=2)
       fit$predicted.match<-temp$predicted==edgelist[(1+conditioned.obs): (NROW(edgelist)-1+ordinal), 2:3]
     }else{
       fit$residual.deviance<-fit$value
@@ -468,13 +486,15 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
         #cat("dev=",dev[i],"lp=",lp[i],"spr=",dlmvt(post[i,],fit$coef,is,ds,3), "iw=",iw[i],"\n")
       }
       iw<-iw-logSum(iw)
-      if(any(is.na(iw)|is.nan(iw)|is.na(exp(iw)))||all(exp(iw)==0)){
-        print(cbind(post,dev,lp,iw,exp(iw)))
+      if(verbose){
+        if(any(is.na(iw)|is.nan(iw)|is.na(exp(iw)))||all(exp(iw)==0)){
+          print(cbind(post,dev,lp,iw,exp(iw)))
+        }
+        print(quantile(iw,(0:10)/10))
+        print(quantile(exp(iw),(0:10)/10))
+        hist(exp(iw))
       }
-      print(quantile(iw,(0:10)/10))
-      print(quantile(exp(iw),(0:10)/10))
-      hist(exp(iw))
-      sel<-sample(1:NROW(post),sir.draws,rep=TRUE,prob=exp(iw))
+      sel<-sample(1:NROW(post),sir.draws,replace=TRUE,prob=exp(iw))
       fit$post<-post[sel,]
       fit$iw<-iw
       fit$post.deviance<-dev[sel]
@@ -508,7 +528,7 @@ print.summary.rem.dyad<-function(x, ...){
   else
     cat("(Temporal Likelihood)\n\n")
   if(is.null(x$cov)){
-    ctab<-matrix(x$coef,nc=1)
+    ctab<-matrix(x$coef,ncol=1)
     rownames(ctab)<-names(x$coef)
     colnames(ctab)<-c("Estimate")
     printCoefmat(ctab)

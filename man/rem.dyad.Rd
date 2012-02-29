@@ -19,7 +19,7 @@
 rem.dyad(edgelist, n, effects = NULL, ordinal = TRUE, acl = NULL,
     cumideg = NULL, cumodeg = NULL, rrl = NULL, covar = NULL, ps = NULL,
     tri = NULL, optim.method = "BFGS", optim.control = list(), 
-    hessian = FALSE, sample.size = Inf, verbose = TRUE, 
+    coef.seed = NULL, hessian = FALSE, sample.size = Inf, verbose = TRUE, 
     fit.method = c("BPM", "MLE", "BSIR"), conditioned.obs = 0, 
     prior.mean = 0, prior.scale = 100, prior.nu = 4, sir.draws = 500, 
     sir.expand = 10, sir.nu = 4, gof = TRUE)
@@ -41,14 +41,15 @@ rem.dyad(edgelist, n, effects = NULL, ordinal = TRUE, acl = NULL,
   \item{tri}{ optionally, a pre-computed triad statistic structure. }
   \item{optim.method}{ the method to be used by \code{\link{optim}}. }
   \item{optim.control}{ additional control parameters to \code{\link{optim}}. }
-  \item{hessian}{ logical; compute the hessian of the log-likelihood/posterior surface? }
+  \item{coef.seed}{an optional vector of coefficients to use as the starting point for the optimization process.}
+   \item{hessian}{ logical; compute the hessian of the log-likelihood/posterior surface? }
   \item{sample.size}{ sample size to use when estimating the sum of event rates. }
   \item{verbose}{ logical; deliver progress reports? }
   \item{fit.method}{ method to use when fitting the model. }
   \item{conditioned.obs}{ the number of initial observations on which to condition when fitting the model (defaults to 0).}
   \item{prior.mean}{ for Bayesian estimation, location vector for prior distribution (multivariate-t).  (Can be a single value.)}
   \item{prior.scale}{ for Bayesian estimation, scale vector for prior distribution.  (Can be a single value.) }
-  \item{prior.nu}{ for Bayesian estimation, degrees of freedom for prior distribution. }
+  \item{prior.nu}{ for Bayesian estimation, degrees of freedom for prior distribution. (Setting this to \code{Inf} results in a Gaussian prior.) }
   \item{sir.draws}{ for sampling importance resampling method, the number of posterior draws to take (post-resampling). }
   \item{sir.expand}{ for sampling importance resampling method, the expansion factor to use in the initial (pre-resampling) sample; sample size is \code{sir.expand*sir.draws}.}
   \item{sir.nu}{ for sampling importance resampling method, the degrees of freedom for the t distribution used to obtain initial (pre-resampling) sample. }
@@ -58,7 +59,7 @@ rem.dyad(edgelist, n, effects = NULL, ordinal = TRUE, acl = NULL,
   \item{...}{additional arguments.}
 }
 \details{
-\code{rem.dyad} fits a (dyadic) relational event model to an event sequence, using either the full temporal or ordinal data likelihoods.  Three estimation methods are currently supported: maximum likelihood estimation, Bayesian posterior mode estimation, and Bayesian sampling importance resampling.  For the Bayesian methods, an adjustable multivariate-t prior is employed.  In the case of Bayesian sampling importance resampling, the posterior mode (and the hessian of the posterior about it) is used as the basis for a multivariate-t sample, which is then resampled via SIR methods to obtain an approximate set of posterior draws.  While this approximation is not guaranteed to work well, it is generally more robust than pure mode approximations (or, in the case of the MLE, estimates of uncertainty derived from the inverse hessian matrix).
+\code{rem.dyad} fits a (dyadic) relational event model to an event sequence, using either the full temporal or ordinal data likelihoods.  Three estimation methods are currently supported: maximum likelihood estimation, Bayesian posterior mode estimation, and Bayesian sampling importance resampling.  For the Bayesian methods, an adjustable multivariate-t (or, if \code{prior.nu==Inf}, Gaussian) prior is employed.  In the case of Bayesian sampling importance resampling, the posterior mode (and the hessian of the posterior about it) is used as the basis for a multivariate-t sample, which is then resampled via SIR methods to obtain an approximate set of posterior draws.  While this approximation is not guaranteed to work well, it is generally more robust than pure mode approximations (or, in the case of the MLE, estimates of uncertainty derived from the inverse hessian matrix).
 
 Whether Bayesian or frequentist methods are used, the relevant likelihood is either based entirely on the order of events (\code{ordinal=TRUE}) or on the realized event times (\code{ordinal=FALSE}).  In the latter case, all event times are understood to be relative to the onset of observation (i.e., observation starts at time 0), and the last event time given is taken to be the end of the observation period.  (If an event is also specified, this event is ignored.)
 

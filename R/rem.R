@@ -4,7 +4,7 @@
 #
 # Written by Carter T. Butts <buttsc@uci.edu>.
 #
-# Last Modified 11/08/10
+# Last Modified 2/29/12
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/relevent package
@@ -325,7 +325,7 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
     #Simulate posterior draws using a Metropolis algorithm
     chains<-list()                                    #Chain list
     clen<-ceiling(mcmc.draws/mcmc.chains)             #Chain length
-    draws<-matrix(nr=clen*mcmc.chains,nc=np)          #Final draws
+    draws<-matrix(nrow=clen*mcmc.chains,ncol=np)      #Final draws
     geweke<-list()                                    #Gewke diag list
     lpl<-list()                                       #Log posterior list
     lp<-rep(0,clen*mcmc.chains)                       #Final log posteriors
@@ -333,7 +333,7 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
     for(i in 1:mcmc.chains){   #Run each chain
       if(verbose)
         cat("\tRunning chain",i,"\n")
-      chains[[i]]<-matrix(nr=clen,nc=np)
+      chains[[i]]<-matrix(nrow=clen,ncol=np)
       lpl[[i]]<-rep(0,clen)
       #Initialize with the independence distribution (normal w/fixed sd)
       chains[[i]][1,]<-rnorm(np,sd=mcmc.ind.sd)
@@ -423,7 +423,7 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
     if(any(is.na(iw)|is.nan(iw)|is.na(exp(iw)))||all(exp(iw)==0)){
       warning("Importance weights seem to have some issues.  Carrying on as best we can.\n")
     }
-    sel<-sample(1:NROW(draws),sir.draws,rep=TRUE,prob=exp(iw))
+    sel<-sample(1:NROW(draws),sir.draws,replace=TRUE,prob=exp(iw))
     fit$draws<-draws[sel,]
     fit$lp.draws<-lp[sel]
     colnames(fit$draws)<-parnam
@@ -502,7 +502,7 @@ print.summary.rem<-function (x, ...)
         cat("(Ordinal Likelihood)\n\n")
     else cat("(Interval Likelihood)\n\n")
     if (is.null(x$cov)) {
-        ctab <- matrix(x$coef, nc = 1)
+        ctab <- matrix(x$coef, ncol = 1)
         rownames(ctab) <- names(x$coef)
         if(x$estimator=="MLE")
           colnames(ctab) <- c("MLE")
