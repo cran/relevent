@@ -4,7 +4,7 @@
 #
 # Written by Carter T. Butts <buttsc@uci.edu>.
 #
-# Last Modified 2/29/12
+# Last Modified 3/09/12
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/relevent package
@@ -247,6 +247,26 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
   #Get effects
   allenam<-c("NIDSnd","NIDRec","NODSnd","NODRec","NTDegSnd","NTDegRec", "FrPSndSnd","FrRecSnd","RRecSnd","RSndSnd","CovSnd","CovRec","CovInt","CovEvent","OTPSnd","ITPSnd","OSPSnd","ISPSnd","FESnd","FERec","FEInt","PSAB-BA","PSAB-B0","PSAB-BY","PSA0-X0","PSA0-XA","PSA0-XY","PSAB-X0","PSAB-XA","PSAB-XB","PSAB-XY","PSA0-AY","PSAB-A0","PSAB-AY")
   effects<-allenam%in%effects
+  #Fix the edgelist
+  if(!is.matrix(edgelist))
+    edgelist<-as.matrix(edgelist)
+  if(ordinal&&is.na(edgelist[NROW(edgelist),2])) #Check for timestamp row
+    edgelist<-edgelist[1:(NROW(edgelist)-1),,drop=FALSE]
+  if(any(is.na(edgelist[1:(NROW(edgelist)-1+ordinal),]))){
+    warning("Edgelist contains missing data; dropping incomplete events.\n")
+    sel<-apply(is.na(edgelist),1,any)
+    if(!ordinal)                     #Can allow NAs for timestamp row
+      sel[length(sel)]<-TRUE
+    edgelist<-edgelist[sel,,drop=FALSE]
+  }
+  if(any(diff(edgelist[,1])<=0,na.rm=TRUE))
+    stop("Events are not well-ordered.  Stopping.\n")
+  if(any(edgelist[,2]==edgelist[,3],na.rm=TRUE)){
+    warning("Edgelist list contains loops (not currently supported); dropping self-interactions.\n")
+    sel<-edgelist[,2]!=edgelist[,3]   #Get rid of loops...
+    sel[is.na(sel)]<-TRUE
+    edgelist<-edgelist[sel,]
+  }
   #Check for covariates
   ncov<-rep(0,4)
   ctimed<-rep(FALSE,4)
@@ -364,17 +384,28 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
     covar$ctimed<-as.logical(ctimed)
   }
   #Compute null deviance
-  nulldev<--2*(NROW(edgelist)-conditioned.obs)*log(1/(n*(n-1)))
+  if(ordinal){
+    nulldev<--2*(NROW(edgelist)-conditioned.obs)*log(1/(n*(n-1)))
+    df.null<-0
+  }else{
+    timeint<-max(edgelist[,1])
+    ecount<-NROW(edgelist)-1
+    ecnt<-n*(n-1)
+    erate<-ecount/timeint
+    if(conditioned.obs==0){
+      dt<-timeint
+    }else{
+      dt<-edgelist[ecount+1,1]-edgelist[conditioned.obs,1]
+    }
+    nulldev<- -2*(log(erate/ecnt)*(ecount-conditioned.obs)-erate*dt)
+    df.null<-1
+  }
   #Fit models, as needed
   if(sum(effects)==0){   #Return the null model
-    fit<-list(null.deviance=nulldev,residual.deviance=nulldev,df.model=0, effects=effects,AIC=nulldev,BIC=nulldev)
+    fit<-list(n=n,m=NROW(edgelist)-conditioned.obs,ordinal=ordinal,null.deviance=nulldev,residual.deviance=nulldev,df.model=df.null, model.deviance=0,df.null=df.null,effects=effects,AIC=nulldev+2*df.null,AICC=nulldev+2*df.null*(df.null+1)/(NROW(edgelist)-conditioned.obs-(!ordinal)-df.null-1),BIC=nulldev+log(NROW(edgelist)-conditioned.obs-(!ordinal))*df.null)
   }else{
     #Perform initial setup
     stime<-proc.time()[3]
-    if(!is.matrix(edgelist))
-      edgelist<-as.matrix(edgelist)
-    if(ordinal&&is.na(edgelist[NROW(edgelist),2])) #Check for timestamp row
-      edgelist<-edgelist[1:(NROW(edgelist)-1),,drop=FALSE]
     if(verbose)
       cat("Computing preliminary statistics\n")
     if(is.null(acl)&&any(effects[1:8]))
@@ -449,21 +480,26 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
       if(sample.size<n*(n-1))
         lrm<-matrix(0.0,n,n)
       temp<-rem.dyad.gof(fit$par,effects=effects,edgelist=edgelist, n=n,acl=acl,cumideg=cumideg,cumodeg=cumodeg,rrl=rrl,covar=covar,ps=ps,tri=tri,lrm=lrm,ordinal=ordinal,condnum=conditioned.obs)
-      fit$residual.deviance<-sum(temp$residuals)
+      fit$residual.deviance<-sum(temp$residuals)+temp$dev.censor
       fit$model.deviance<-nulldev-fit$residual.deviance
       fit$residuals<-temp$residuals
       fit$predicted<-matrix(temp$predicted,ncol=2)
       fit$predicted.match<-temp$predicted==edgelist[(1+conditioned.obs): (NROW(edgelist)-1+ordinal), 2:3]
+      fit$observed.rank<-temp$obs.rank
     }else{
-      fit$residual.deviance<-fit$value
+      fit$residual.deviance<-fit$value #Deviance if MLE, else -log post
+      if(match.arg(fit.method)%in%c("BPM","BSIR")){  #Correct to dev if not MLE
+        fit$residual.deviance<-2*(fit$residual.deviance + rem.dyad.lprior(pv=fit$coef,pr.mean=prior.mean,pr.scale=prior.scale,pr.nu=prior.nu))
+      }
       fit$model.deviance<-nulldev-fit$residual.deviance
     }
     fit$df.model<-nparm
     fit$null.deviance<-nulldev
+    fit$df.null<-df.null
     fit$effects<-effects
-    fit$AIC<-fit$value+2*nparm
+    fit$AIC<-fit$residual.deviance+2*nparm
     fit$AICC<-fit$AIC+2*nparm*(nparm+1)/(fit$m-(!ordinal)-nparm-1)
-    fit$BIC<-fit$value+nparm*log(fit$m-(!ordinal))
+    fit$BIC<-fit$residual.deviance+nparm*log(fit$m-(!ordinal))
     if(!is.null(fit$hessian))
       fit$cov<-qr.solve(fit$hessian)
     if(match.arg(fit.method)=="BSIR"){
@@ -492,7 +528,7 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
         }
         print(quantile(iw,(0:10)/10))
         print(quantile(exp(iw),(0:10)/10))
-        hist(exp(iw))
+        #hist(exp(iw))
       }
       sel<-sample(1:NROW(post),sir.draws,replace=TRUE,prob=exp(iw))
       fit$post<-post[sel,]
@@ -512,13 +548,17 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
 }
 
 print.rem.dyad<-function(x, ...){
-  print(x$coef)
-  print(x$effects)
-  print(x$null.deviance)
-  print(x$residual.deviance)
-  print(x$AIC)
-  print(x$AICC)
-  print(x$BIC)
+  cat("Relational Event Model\n")
+  if(is.null(x$coef)){
+    cat("\nNull model object.\n")
+  }else{
+    cat("\nCoefficient Estimates:\n")
+    print(x$coef)
+    #print(x$effects)
+  }
+  cat("\nNull Deviance:",x$null.deviance,"\n")
+  cat("Residual Deviance:",x$residual.deviance,"\n")
+  cat("AIC:",x$AIC,"AICC:",x$AICC,"BIC:",x$BIC,"\n\n")
 }
 
 print.summary.rem.dyad<-function(x, ...){
@@ -527,22 +567,26 @@ print.summary.rem.dyad<-function(x, ...){
     cat("(Ordinal Likelihood)\n\n")
   else
     cat("(Temporal Likelihood)\n\n")
-  if(is.null(x$cov)){
-    ctab<-matrix(x$coef,ncol=1)
-    rownames(ctab)<-names(x$coef)
-    colnames(ctab)<-c("Estimate")
-    printCoefmat(ctab)
+  if(is.null(x$coef)){
+    cat("Null model object.\n\n")
   }else{
-    ctab<-cbind(x$coef,diag(x$cov)^0.5)
-    ctab<-cbind(ctab,ctab[,1]/ctab[,2])
-    ctab<-cbind(ctab,2*(1-pnorm(abs(ctab[,3]))))
-    rownames(ctab)<-names(x$coef)
-    colnames(ctab)<-c("Estimate","Std.Err","Z value","Pr(>|z|)")
-    printCoefmat(ctab,P.values=TRUE)
+    if(is.null(x$cov)){
+      ctab<-matrix(x$coef,ncol=1)
+      rownames(ctab)<-names(x$coef)
+      colnames(ctab)<-c("Estimate")
+      printCoefmat(ctab)
+    }else{
+      ctab<-cbind(x$coef,diag(x$cov)^0.5)
+      ctab<-cbind(ctab,ctab[,1]/ctab[,2])
+      ctab<-cbind(ctab,2*(1-pnorm(abs(ctab[,3]))))
+      rownames(ctab)<-names(x$coef)
+      colnames(ctab)<-c("Estimate","Std.Err","Z value","Pr(>|z|)")
+      printCoefmat(ctab,P.values=TRUE)
+    }
   }
-  cat("Null deviance:",x$null.deviance,"on",x$m,"degrees of freedom\n")
+  cat("Null deviance:",x$null.deviance,"on",x$m-x$df.null,"degrees of freedom\n")
   cat("Residual deviance:",x$residual.deviance,"on",x$m-x$df.model,"degrees of freedom\n")
-  cat("\tChi-square:",x$model.deviance,"on",x$df.model,"degrees of freedom, asymptotic p-value",1-pchisq(x$model.deviance,x$df.model),"\n")
+  cat("\tChi-square:",x$model.deviance,"on",x$df.model-x$df.null,"degrees of freedom, asymptotic p-value",1-pchisq(x$model.deviance,x$df.model-x$df.null),"\n")
   cat("AIC:",x$AIC,"AICC:",x$AICC,"BIC:",x$BIC,"\n")
 }
 

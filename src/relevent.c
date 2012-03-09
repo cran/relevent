@@ -4,7 +4,7 @@
 # relevent.c
 #
 # Written by Carter T. Butts <buttsc@uci.edu>
-# Last Modified 01/03/10
+# Last Modified 03/08/12
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/relevent package
@@ -1707,8 +1707,8 @@ SEXP drem_gof_R(SEXP pv, SEXP effects, SEXP edgelist, SEXP n, SEXP acl, SEXP cum
 the event-wise deviance residuals and predicted events.*/
 {
   int pc=0,i,m,nv,j,k,ncond;
-  double lrsum,maxlrm,*el;
-  SEXP ll,pred,outlist,aclit;
+  double lrsum,maxlrm,*el,obslr,lrjk,ldt,*dc;
+  SEXP ll,pred,outlist,aclit,erank,devcen;
   
   /*Set things up*/
   m=nrows(edgelist);
@@ -1718,7 +1718,10 @@ the event-wise deviance residuals and predicted events.*/
   ncond=INTEGER(condnum)[0];
   PROTECT(ordinal=coerceVector(ordinal,LGLSXP)); pc++;
   PROTECT(ll=allocVector(REALSXP,m-1+INTEGER(ordinal)[0]-ncond)); pc++;
+  PROTECT(devcen=allocVector(REALSXP,1)); pc++;
+  dc=REAL(devcen);
   PROTECT(pred=allocVector(INTSXP,2*(m-1+INTEGER(ordinal)[0]-ncond))); pc++;    
+  PROTECT(erank=allocVector(INTSXP,m-1+INTEGER(ordinal)[0]-ncond)); pc++;    
   PROTECT(lrm=coerceVector(lrm,REALSXP)); pc++;
   PROTECT(pv=coerceVector(pv,REALSXP)); pc++;
   PROTECT(effects=coerceVector(effects,LGLSXP)); pc++;
@@ -1735,23 +1738,61 @@ the event-wise deviance residuals and predicted events.*/
     else
       aclit=R_NilValue;
     lambda(pv,i,effects,nv,m,aclit,cumideg,cumodeg,rrl,covar,ps,tri,lrm);
-    lrsum=-DBL_MAX;
+    if(INTEGER(ordinal)[0])
+      lrsum=-DBL_MAX;
+    else
+      lrsum=0.0;
     maxlrm=-DBL_MAX;
+    obslr=REAL(lrm)[(int)el[i+m]-1+((int)el[i+2*m]-1)*nv]; /*Obs hazard*/
+    INTEGER(erank)[i-ncond]=1;              /*Initialize the edge rank*/
+    if(i>0)                                /*Record time since prior event*/
+      ldt=log(el[i]-el[i-1]);
+    else
+      ldt=log(el[i]);
     for(j=0;j<nv;j++)
       for(k=0;k<nv;k++)
         if(j!=k){
-          lrsum=logsum(REAL(lrm)[j+k*nv],lrsum);
-          if(REAL(lrm)[j+k*nv]>maxlrm){     /*Record the most probable edge*/
+          lrjk=REAL(lrm)[j+k*nv];           /*Pull the j->k log rate*/
+          if(INTEGER(ordinal)[0])
+            lrsum=logsum(lrjk,lrsum);       /*Increment the log rate sum*/
+          else
+            lrsum+=exp(lrjk+ldt);           /*Increment the survival sum*/
+          if(lrjk>maxlrm){                  /*Record the most probable edge*/
             INTEGER(pred)[i-ncond]=j+1;
             INTEGER(pred)[i+m-1+INTEGER(ordinal)[0]-ncond]=k+1;
+            maxlrm=lrjk;                    /*Update the maximum*/
           }
+          if(lrjk>obslr)     /*If j->k more likely, increment obs event rank*/
+            INTEGER(erank)[i-ncond]++;
         }
-    REAL(ll)[i-ncond]=-2.0*(REAL(lrm)[(int)el[i+m]-1+((int)el[i+2*m]-1)*nv]- lrsum);
+    REAL(ll)[i-ncond]=-2.0*(obslr-lrsum);
+  }
+  /*Deal with censoring factor, if not ordinal; note, i carries from above*/
+  if(!(INTEGER(ordinal)[0])){
+    if(length(acl)>0)
+      aclit=VECTOR_ELT(acl,i);
+    else
+      aclit=R_NilValue;
+    lambda(pv,i,effects,nv,m,aclit,cumideg,cumodeg,rrl,covar,ps,tri,lrm);
+    lrsum=0.0;
+    if(i>0)                                /*Record time since prior event*/
+      ldt=log(el[i]-el[i-1]);
+    else
+      ldt=log(el[i]);
+    for(j=0;j<nv;j++)
+      for(k=0;k<nv;k++)
+        if(j!=k){
+          lrjk=REAL(lrm)[j+k*nv];           /*Pull the j->k log rate*/
+          lrsum+=exp(lrjk+ldt);             /*Increment the survival sum*/
+        }
+    *dc=2.0*lrsum;
   }
 
   /*Add deviance residuals and prediction information to the output list*/
   PROTECT(outlist=setListElement(outlist,"residuals",ll)); pc++;
   PROTECT(outlist=setListElement(outlist,"predicted",pred)); pc++;
+  PROTECT(outlist=setListElement(outlist,"obs.rank",erank)); pc++;
+  PROTECT(outlist=setListElement(outlist,"dev.censor",devcen)); pc++;
 
   /*Unprotect and return*/
   UNPROTECT(pc);

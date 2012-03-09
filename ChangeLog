@@ -1,5 +1,19 @@
 CHANGELOG:
 
+v1.0-2 - Bug Fixes and Changes
+  Changes:
+    - Print output has been changed, hopefully in a more pleasing way.
+    - rem.dyad now removes NAs and loops (with a warning).
+    - rem.dyad now exits when called with poorly ordered events.
+  Bug Fixes:
+    - Calling rem.dyad with NAs, loops, or unordered events (all unsupported)
+      could produce failure.
+    - Null deviance for non-ordinal case was not sensible.  (An intercept model
+      is now used.)
+    - Print and summary methods would fail on a null model object.
+    - Reported deviance for non-ordinal case did not include right-censoring
+      (although this did not affect estimation).
+
 v1.0-1 - Bug Fixes and New Features
   New Features:
     - rem.dyad now allows the initial coefficient "seed" for the optimization
