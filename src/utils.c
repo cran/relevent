@@ -25,6 +25,15 @@
 #include "utils.h"
 
 
+/*ERROR ROUTINES------------------------------------------------------------*/
+
+void RE_UNIMPLEMENTED_TYPE(const char *s, SEXPTYPE t)
+/*This is a replacement for UNIMPLEMENTED_TYPE, which cannot be used anymore.*/
+{
+  error("Unimplemented type with code %d was passed to function %s.\n",t,s);
+}
+
+
 /*MATH ROUTINES-------------------------------------------------------------*/
 
 double logsum(double a, double b)
@@ -225,7 +234,7 @@ SEXP enlargeList(SEXP list, int n)
           setAttrib(newlist,R_NamesSymbol,newnames);
         break;
       default:
-        UNIMPLEMENTED_TYPE("enlargeList",TYPEOF(list));
+        RE_UNIMPLEMENTED_TYPE("enlargeList",TYPEOF(list));
     }
     UNPROTECT(pc);
     return newlist;
@@ -318,7 +327,7 @@ SEXP contractList(SEXP list, int n)
           setAttrib(newlist,R_NamesSymbol,newnames);
         break;
       default:
-        UNIMPLEMENTED_TYPE("contractList",TYPEOF(list));
+        RE_UNIMPLEMENTED_TYPE("contractList",TYPEOF(list));
     }
     UNPROTECT(pc);
     return newlist;
@@ -458,7 +467,7 @@ int vecEq(SEXP a, SEXP b)
       return 1;
       break;
     default:
-      UNIMPLEMENTED_TYPE("vecEq",type);
+      RE_UNIMPLEMENTED_TYPE("vecEq",type);
   }
   /*Should never get here!*/
   return -1;
@@ -493,7 +502,7 @@ int vecIsIn(double a, SEXP b)
           return 1;
       break;
     default:
-      UNIMPLEMENTED_TYPE("vecIsIn",TYPEOF(b));
+      RE_UNIMPLEMENTED_TYPE("vecIsIn",TYPEOF(b));
   }
 
   /*If still here, a isn't in b*/
@@ -594,7 +603,7 @@ SEXP vecAppend(SEXP a, SEXP b)
         SET_VECTOR_ELT(v,i+length(a),VECTOR_ELT(b,i));
       break;
     default:
-      UNIMPLEMENTED_TYPE("vecAppend",type);
+      RE_UNIMPLEMENTED_TYPE("vecAppend",type);
   }
 
   /*Unprotect and return*/
@@ -653,7 +662,7 @@ SEXP vecRemove(SEXP v, double e)
           RAW(newvec)[count++]=RAW(v)[i];
       break;
     default:
-      UNIMPLEMENTED_TYPE("vecRemove",type);
+      RE_UNIMPLEMENTED_TYPE("vecRemove",type);
   }
 
   /*Unprotect and exit*/
@@ -771,7 +780,7 @@ SEXP vecUnique(SEXP a)
           RAW(newv)[dcount++]=RAW(a)[i];
       break;
     default:
-      UNIMPLEMENTED_TYPE("vecUnion",TYPEOF(a));
+      RE_UNIMPLEMENTED_TYPE("vecUnion",TYPEOF(a));
   }
 
   /*Unprotect and return*/

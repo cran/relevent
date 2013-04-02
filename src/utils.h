@@ -4,7 +4,7 @@
 # utils.h
 #
 # Written by Carter T. Butts <buttsc@uci.edu>
-# Last Modified 4/12/06
+# Last Modified 4/03/13
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/action package
@@ -31,9 +31,9 @@
 #define MIN(a,b) ((a)<(b) ? (a) : (b))
 #define MAX(a,b) ((a)<(b) ? (b) : (a))
 
-/*ROUTINES FROM OTHER PACKAGES----------------------------------------------*/
+/*ERROR ROUTINES------------------------------------------------------------*/
 
-void UNIMPLEMENTED_TYPE(const char *s, SEXPTYPE t);
+void RE_UNIMPLEMENTED_TYPE(const char *s, SEXPTYPE t);
 
 
 /*MATH ROUTINES-------------------------------------------------------------*/

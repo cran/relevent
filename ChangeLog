@@ -1,4 +1,7 @@
 CHANGELOG:
+v1.0-3 - Changes
+  Changes:
+    - Minor (non-visible) changes to ensure CRAN compliance.
 
 v1.0-2 - Bug Fixes and Changes
   Changes:
