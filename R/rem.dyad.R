@@ -4,7 +4,7 @@
 #
 # Written by Carter T. Butts <buttsc@uci.edu>.
 #
-# Last Modified 3/09/12
+# Last Modified 3/08/15
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/relevent package
@@ -204,7 +204,6 @@ rem.dyad.gof<-function(pv,effects,edgelist,n,acl,cumideg,cumodeg,rrl,covar,ps,tr
 
 #Fit the dyadic relational event model, using the specified method and effects
 rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cumodeg=NULL,rrl=NULL,covar=NULL,ps=NULL,tri=NULL,optim.method="BFGS",optim.control=list(),coef.seed=NULL,hessian=FALSE,sample.size=Inf,verbose=TRUE,fit.method=c("BPM","MLE","BSIR"),conditioned.obs=0,prior.mean=0,prior.scale=100,prior.nu=4,sir.draws=500,sir.expand=10,sir.nu=4,gof=TRUE){
-  require(sna)
   #t density
   dlmvt<-function(x,mu,is,ds,df){
     m<-length(x)
@@ -425,7 +424,6 @@ rem.dyad<-function(edgelist,n,effects=NULL,ordinal=TRUE,acl=NULL,cumideg=NULL,cu
     }
     if(sample.size<n*(n-1)){
       lrv<-rep(0.0,sample.size+1)
-      require(sna)
       temp<-rgnm(1,n,sample.size)
       tail<-as.integer(c(0,row(temp)[temp>0]-1))
       head<-as.integer(c(0,col(temp)[temp>0]-1))

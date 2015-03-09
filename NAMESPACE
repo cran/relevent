@@ -3,6 +3,9 @@ useDynLib(relevent)
 
 #Import required symbols
 import(utils)
+import(coda)
+import(sna)
+import(trust)
 
 #Export everything, because we dislike secrets
 exportPattern("^[^\\.]")

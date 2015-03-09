@@ -4,7 +4,7 @@
 #
 # Written by Carter T. Butts <buttsc@uci.edu>.
 #
-# Last Modified 2/29/12
+# Last Modified 3/08/15
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/relevent package
@@ -51,7 +51,6 @@
 #    parameters.  For a hierarchical model, this will need to be augmented
 #    by information from the higher levels.
 rem.ord.dev<-function(par,pmapl,evl,statsl,suppl,ret.deriv,verbose,...){
-  require(sna)
   np<-length(par)
   val<-0
   if(ret.deriv){
@@ -122,7 +121,6 @@ rem.ord.nlp<-function(par,pmapl,evl,statsl,suppl,ppar,ret.deriv,verbose,...){
 #Interval version of the above -- use timing information, and take exogenous events
 #into account directly (via inter-event survival function).
 rem.int.dev<-function(par,pmapl,evl,statsl,suppl,ret.deriv,verbose,...){
-  require(sna)
   np<-length(par)
   val<-0
   if(ret.deriv){
@@ -321,7 +319,6 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
   if(verbose)
     cat("Fitting model...\n")
   if(match.arg(estimator)=="BMCMC"){  #Bayesian Posterior Estimation via MCMC
-    require(coda)
     #Simulate posterior draws using a Metropolis algorithm
     chains<-list()                                    #Chain list
     clen<-ceiling(mcmc.draws/mcmc.chains)             #Chain length
@@ -394,7 +391,6 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
     colnames(fit$draws)<-parnam
   }else{                              #Posterior Mode Estimation/MLE
     #Perform the optimization using trust
-    require(trust)                              #Trust is required.  Ha ha.
     par<-rep(0,np)
     fit<-trust(ofun,parinit=par,1,100,pmapl=pmapl,evl=eventlist, statsl=statsl, suppl=supplist, ppar=prior.param, ret.deriv=TRUE, verbose=verbose)
     #Identify the coefficients
@@ -468,7 +464,10 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
   }
   fit$loglik<--0.5*fit$residual.deviance
   fit$null.deviance<-switch(match.arg(timing),
-    "ordinal"=2*sum(sapply(supplist,function(z){sum(log(rowSums(z)))})),
+#    "ordinal"=2*sum((eventlist[,1]>0)*sapply(supplist,function(z){sum(log(rowSums(z)))})),
+    "ordinal"=2*sum(sapply(1:length(eventlist),function(z){
+      sum((eventlist[[z]][,1]>0)*log(rowSums(supplist[[z]])))
+    })),
     "interval"=intNullDev(evl=eventlist,suppl=supplist,nev=ne)
   )
   fit$model.deviance<-fit$null.deviance-fit$residual.deviance

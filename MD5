@@ -1,9 +1,10 @@
-e8448f61fc3e54204923338dcd7e3fda *ChangeLog
-bb11f41e9053f6fb3c2bdff0373e7bf4 *DESCRIPTION
-386a0fbb9d43a8f128bf061d78aff6ab *NAMESPACE
-f9bc43256492a1e89127023b13ef5ee6 *R/rem.R
-bc6e5f81e72e937b5b137d53eb07f866 *R/rem.dyad.R
+bac0e6c3843b0dd4ee61017f3b16df79 *ChangeLog
+e634aaba5c87d5ceb316f17b3981aca3 *DESCRIPTION
+70792679cc3a0086f51bd61b4967bab3 *NAMESPACE
+4ab5ed8252730f56714342f6ae866396 *R/rem.R
+8099aec63c04f5cd7ca78c4f352294d9 *R/rem.dyad.R
 e5fa09081a10855cc08ecd1134c17b1b *R/zzz.R
+5886403993539d671de9bcd85fff0da4 *inst/CITATION
 e718868fbfbb4b54532d9a87235eb4ab *man/relevent-internal.Rd
 eb5126d290ae54fdd86d0dc26815b31c *man/rem.Rd
 cbb44eda56be8a603ffae433cc99ddea *man/rem.dyad.Rd

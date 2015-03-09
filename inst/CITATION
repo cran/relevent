@@ -1,0 +1,35 @@
+citHeader("To cite relevent in publications, the Butts (2008) reference below is recommended; for papers using exogenous statistics or relevent with the informR package, Marcum and Butts (2015) is also suggested.  Thank you for your support of relevent!")
+
+citEntry(entry = "Article",
+  title        = "A Relational Event Framework for Social Action",
+  author       = personList(as.person("Carter T. Butts")),
+  journal      = "Sociological Methodology",
+  year         = "2008",
+  volume       = "38",
+  number       = "1",
+  pages        = "155--200",
+
+  textVersion  =
+  paste("Carter T. Butts (2008).",
+        "A Relational Event Framework for Social Action.",
+        "Sociological Methodology, 38(1), 155--200.")
+)
+
+
+citEntry(entry = "Article",
+  title        = "Constructing and Modifying Sequence Statistics for {relevent} Using {informR} in {R}",
+  author       = personList(as.person("Christopher Steven Marcum"),
+                   as.person("Carter T. Butts")),
+  journal      = "Journal of Statistical Software",
+  year         = "2015",
+  volume       = "64",
+  number       = "5",
+  pages        = "1--36",
+  url          = "http://www.jstatsoft.org/v64/i05/",
+
+  textVersion  =
+  paste("Christopher Steven Marcum, Carter T. Butts (2015).",
+        "Constructing and Modifying Sequence Statistics for relevent Using informR in R.",
+        "Journal of Statistical Software, 64(5), 1-36.",
+        "URL http://www.jstatsoft.org/v64/i05/.")
+)
