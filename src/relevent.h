@@ -4,8 +4,9 @@
 # relevent.h
 #
 # Written by Carter T. Butts <buttsc@uci.edu>
-# Last Modified 01/03/10
+# Last Modified 08/29/21
 # Licensed under the GNU General Public License version 2 (June, 1991)
+# or later
 #
 # Part of the R/relevent package
 #
@@ -84,15 +85,15 @@ int pshiftclassify(int osrc, int odest, int nsrc, int ndest);
 
 /*R-CALLABLE ROUTINES-------------------------------------------------------*/
 
-SEXP accum_interact_R(SEXP elist);
+SEXP accum_interact_R(SEXP elist, SEXP oldacl);
 
-SEXP accum_rrl_R(SEXP elist);
+SEXP accum_rrl_R(SEXP elist, SEXP oldrrl);
 
 SEXP accum_ps_R(SEXP elist);
 
-SEXP acl_ps_R(SEXP elist, SEXP n);
+SEXP acl_ps_R(SEXP elist, SEXP n, SEXP oldps);
 
-SEXP acl_tri_R(SEXP acl);
+SEXP acl_tri_R(SEXP acl, SEXP oldtri);
 
 SEXP drem_n2llik_R(SEXP pv, SEXP effects, SEXP edgelist, SEXP n, SEXP acl, SEXP cumideg, SEXP cumodeg, SEXP rrl, SEXP covar, SEXP ps, SEXP tri, SEXP lrm, SEXP ordinal, SEXP condnum);
 
@@ -102,6 +103,11 @@ SEXP drem_gof_R(SEXP pv, SEXP effects, SEXP edgelist, SEXP n, SEXP acl, SEXP cum
 
 void rem_int_dev_R(double *par, int *pnpar, double *evm, int *pm, double *statsa, int *pnet, int *suppm, int *calcderiv, double *val, double *grad, double *hess);
 
+void rem_int_ev_dev_R(double *par, int *pnpar, double *ev, double *statsm, int *pnet, int *suppv, int *calcderiv, double *val, double *grad, double *hess, int *initvals);
+
 void rem_ord_dev_R(double *par, int *pnpar, int *evm, int *pm, double *statsa, int *pnet, int *suppm, int *calcderiv, double *val, double *grad, double *hess);
+
+SEXP lambda_R(SEXP pv, SEXP iter, SEXP effects, SEXP n, SEXP nev, SEXP acl, SEXP cumideg, SEXP cumodeg, SEXP rrl, SEXP covar, SEXP ps, SEXP tri, SEXP lrm);
+
 
 #endif

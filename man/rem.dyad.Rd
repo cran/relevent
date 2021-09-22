@@ -1,4 +1,5 @@
 \name{rem.dyad}
+\alias{rem.dyad.lambda}
 \alias{rem.dyad.lprior}
 \alias{rem.dyad.nlpost}
 \alias{rem.dyad.n2llik}
@@ -10,6 +11,7 @@
 \alias{print.rem.dyad}
 \alias{print.summary.rem.dyad}
 \alias{summary.rem.dyad}
+\alias{simulate.rem.dyad}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{ Fit a Relational Event Model to Dyadic Data }
 \description{
@@ -25,10 +27,12 @@ rem.dyad(edgelist, n, effects = NULL, ordinal = TRUE, acl = NULL,
     sir.expand = 10, sir.nu = 4, gof = TRUE)
 \method{print}{rem.dyad}(x, ...)
 \method{summary}{rem.dyad}(object, ...) 
+\method{simulate}{rem.dyad}(object, nsim = object$m, seed = NULL, 
+    coef = NULL, covar = NULL, verbose = FALSE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{edgelist}{ a three-column edgelist matrix, with each row containing (in order) the time/order, sender, and receiver for the event in question. }
+  \item{edgelist}{ a three-column edgelist matrix, with each row containing (in order) the time/order, sender, and receiver for the event in question, or \code{NULL} to create a model skeleton (useful for simulation). }
   \item{n}{ number of senders/receivers. }
   \item{effects}{ a character vector indicating which effects to use; see below for specification. }
   \item{ordinal}{ logical; should the ordinal likelihood be used?  (If \code{FALSE}, the temporal likelihood is used instead.) }
@@ -41,7 +45,7 @@ rem.dyad(edgelist, n, effects = NULL, ordinal = TRUE, acl = NULL,
   \item{tri}{ optionally, a pre-computed triad statistic structure. }
   \item{optim.method}{ the method to be used by \code{\link{optim}}. }
   \item{optim.control}{ additional control parameters to \code{\link{optim}}. }
-  \item{coef.seed}{an optional vector of coefficients to use as the starting point for the optimization process.}
+  \item{coef.seed}{an optional vector of coefficients to use as the starting point for the optimization process; if \code{edgelist==NULL}, this is the vector of embedded coefficients for the model skeleton.}
    \item{hessian}{ logical; compute the hessian of the log-likelihood/posterior surface? }
   \item{sample.size}{ sample size to use when estimating the sum of event rates. }
   \item{verbose}{ logical; deliver progress reports? }
@@ -56,6 +60,9 @@ rem.dyad(edgelist, n, effects = NULL, ordinal = TRUE, acl = NULL,
   \item{gof}{logical; calculate goodness-of-fit information?}
   \item{x}{ an object of class \code{rem.dyad}.}
   \item{object}{ an object of class \code{rem.dyad}.}
+  \item{nsim}{ number of events to simulate (defaults to the observed sequence length in the fitted model). }
+  \item{seed}{ random number seed to use for simulation. }
+  \item{coef}{ optional vector of coefficients to override those in the fitted model object, for simulation purposes.}
   \item{...}{additional arguments.}
 }
 \details{
@@ -111,6 +118,10 @@ If covariates effects are indicated, then appropriate covariate values must be s
 \item Single or multiple covariates, time varying: For \code{CovSnd}, \code{CovRec}, or \code{CovInt}, an \code{m} by \code{p} by {n} array whose respective dimensions index time (i.e., event number), covariate, and actor.  For \code{CovEvent}, a \code{m} by \code{p} by \code{n} by \code{n} array, whose dimensions are analogous to the previous case.
 }
 Note that \dQuote{time varying} covariates may only change values when events transpire; thus, they should be regarded as temporally endogenous.  (See the reference below for details.) 
+
+If called with \code{edgelist==NULL}, \code{rem.dyad} will produce a \dQuote{model skeleton} object containing the effects and other information, but no model fit.  (The seed coefficients, if given, are entered as the coefficients in the model, or else an uninteresting default set is used.)  The main purpose for this object is to set up an \emph{ab initio} simulation, as described below: once the skeleton is created, the \code{\link{simulate}} method can be used to generate draws from that model (without fitting to a data set).
+
+A \code{\link{simulate}} method is provided for \code{rem.dyad} objects, which allows simulation of new event sequences from a fitted or skeleton model.  By default, a new sequence of length equal to the original sequence to which the model object was fitted is simulated (if applicable), but other lengths may be chosen using \code{nsim}.  Although the coefficients in the model object are used by default, this may also be altered by specifying \code{coef}.  Note that any covariates used must be passed to the simulate command via \code{covar} (using the same format as in the original model); this is in part because \code{rem.dyad} objects do not currently save their input data, and in part because dynamic covariates must always be the length of the simulated sequence (and hence must be factored when a non-default \code{nsim} value is used).  For models fit using \code{ordinal=TRUE}, the overall pacing of events will be arbitrary (more specifically, the simulation will tacitly assume that each event has a unit base hazard), but the relative timing is not.  See below for examples of both simulation using a fitted model object and \emph{ab initio} simulation without fitting a model to data.
 }
 \value{
 An object of class \code{rem.dyad}.
@@ -180,6 +191,19 @@ for(i in 10:18){
   hist(fit.bsir$post[,i],main=names(fit.bsir$coef)[i],prob=TRUE)
   abline(v=coleff[i-8],col=2,lwd=3)
 }
+
+#Simulate an event sequence from the temporal model
+sim<-simulate(fit.time,nsim=50000) #Simulate 50000 events
+head(sim)                          #Show the event list
+par(mfrow=c(1,2))                  #Check the behavior
+esnd<-exp(c(0,fit.time$coef[1:9]))
+esnd<-esnd/sum(esnd)*5e4           #Expected sending count
+erec<-exp(c(0,fit.time$coef[10:18]))
+erec<-erec/sum(erec)*5e4           #Expected sending count
+plot(esnd,tabulate(sim[,2]),xlab="Expected Out-events",ylab="Out-events")
+abline(0,1,col=2)
+plot(erec,tabulate(sim[,3]),xlab="Expected In-events",ylab="In-events")
+abline(0,1,col=2)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

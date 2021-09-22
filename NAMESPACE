@@ -1,14 +1,19 @@
-#Use the relevent object
-useDynLib(relevent)
+#Use the relevent object; we have registered the C entry points, and these
+#will show up as functions of name C_myfun in R.  They can be directly called
+#with that name, e.g. .Call(C_myfun, ...) instead of 
+#.Call("myfun",...,PACKAGE="relevent").  I am skeptical of the value of this,
+#but CRAN seems to be forcing everyone in this direction (as usual).
+useDynLib(relevent, .registration=TRUE, .fixes="C_")
 
 #Import required symbols
 import(utils)
+import(stats)
 import(coda)
 import(sna)
 import(trust)
 
-#Export everything, because we dislike secrets
-exportPattern("^[^\\.]")
+#Export everything except .* or C_*, because we dislike secrets
+exportPattern("^([^\\.C])|(^C[^_])")
 
 #Manually register S3 methods
 S3method(print,rem.dyad)
@@ -17,3 +22,5 @@ S3method(print,summary.rem.dyad)
 S3method(print,rem)
 S3method(summary,rem)
 S3method(print,summary.rem)
+S3method(simulate,rem.dyad)
+

@@ -4,8 +4,9 @@
 # relevent.c
 #
 # Written by Carter T. Butts <buttsc@uci.edu>
-# Last Modified 03/08/12
+# Last Modified 09/13/21
 # Licensed under the GNU General Public License version 2 (June, 1991)
+# or later
 #
 # Part of the R/relevent package
 #
@@ -95,13 +96,21 @@ double rrl_rank(SEXP rrl, int src, int dest, int mode)
 }
 
 
-SEXP accum_interact_R(SEXP elist)
-/*Given a list of events (in (time,src,dest) form), return a list of vectors with the accumulated number of interactions for each actor at each event.*/
+SEXP accum_interact_R(SEXP elist, SEXP oldacl)
+/*Given a list of events (in (time,src,dest) form), return a list of vectors with the accumulated number of interactions for each actor at each event.  If the second argument, oldacl, is non-null, then oldacl is expanded to add any unprocessed events in elist; if elist is shorter than oldacl, an error is thrown.  While a new list object is returned, its contents are mostly ported over from the old list, so the old list should not then be accessed directly unless you know what you are doing (since it will point to the same memory locations).*/
 {
-  int pc=0,m,i;
+  int pc=0,m,i,om;
   SEXP acl,list,srcl,destl,elem;
 
-  /*Allocate memory for the acl*/
+  /*Check to be sure the inputs are valid*/
+  if(oldacl!=R_NilValue)
+    om=0;
+  else
+    om=length(oldacl);
+  if(nrows(elist)<=om)
+    error("Passed an edgelist to accum_interact_R that is shorter than the old acl it was intended to update!  Don't do that.\n");
+
+  /*Allocate memory for the (new acl)*/
   m=nrows(elist);
   PROTECT(elist=coerceVector(elist,STRSXP)); pc++;
   PROTECT(acl=allocVector(VECSXP,m)); pc++;  
@@ -110,30 +119,34 @@ SEXP accum_interact_R(SEXP elist)
   PROTECT(elem=allocVector(VECSXP,0)); pc++;
   SET_VECTOR_ELT(acl,0,elem);
   for(i=1;i<m;i++){
-    PROTECT(list=duplicate(VECTOR_ELT(acl,i-1))); pc++;  /*Copy the old list*/
-    srcl=getListElement(list,CHAR(STRING_ELT(elist,i-1+m))); /*Try to get src*/
-    if(srcl==R_NilValue){               /*If no src, create a new list*/
-      PROTECT(srcl=allocVector(VECSXP,0)); pc++;
-      PROTECT(elem=allocVector(INTSXP,1)); pc++;
-      INTEGER(elem)[0]=1;
-      PROTECT(srcl=setListElement(srcl,CHAR(STRING_ELT(elist,i-1+2*m)),elem)); pc++;
-      PROTECT(list=setListElement(list,CHAR(STRING_ELT(elist,i-1+m)),srcl)); pc++;
-    }else{                             /*Otherwise, set dest*/
-      destl=getListElement(srcl,CHAR(STRING_ELT(elist,i-1+2*m)));  /*Get dest*/
-      if(destl==R_NilValue){
+    if(i<=om){              /*Transfer over the old acl*/
+      SET_VECTOR_ELT(acl,i-1,VECTOR_ELT(oldacl,i-1));
+    }else{                  /*Now, expand*/
+      PROTECT(list=duplicate(VECTOR_ELT(acl,i-1))); pc++;  /*Copy the old list*/
+      srcl=getListElement(list,CHAR(STRING_ELT(elist,i-1+m))); /*Try to get src*/
+      if(srcl==R_NilValue){               /*If no src, create a new list*/
+        PROTECT(srcl=allocVector(VECSXP,0)); pc++;
         PROTECT(elem=allocVector(INTSXP,1)); pc++;
         INTEGER(elem)[0]=1;
         PROTECT(srcl=setListElement(srcl,CHAR(STRING_ELT(elist,i-1+2*m)),elem)); pc++;
-        list=setListElement(list,CHAR(STRING_ELT(elist,i-1+m)),srcl);
-      }else{
-        PROTECT(elem=coerceVector(destl,INTSXP)); pc++;
-        INTEGER(elem)[0]++;
-        srcl=setListElement(srcl,CHAR(STRING_ELT(elist,i-1+2*m)),elem);
+        PROTECT(list=setListElement(list,CHAR(STRING_ELT(elist,i-1+m)),srcl)); pc++;
+      }else{                             /*Otherwise, set dest*/
+        destl=getListElement(srcl,CHAR(STRING_ELT(elist,i-1+2*m)));  /*Get dest*/
+        if(destl==R_NilValue){
+          PROTECT(elem=allocVector(INTSXP,1)); pc++;
+          INTEGER(elem)[0]=1;
+          PROTECT(srcl=setListElement(srcl,CHAR(STRING_ELT(elist,i-1+2*m)),elem)); pc++;
+          list=setListElement(list,CHAR(STRING_ELT(elist,i-1+m)),srcl);
+        }else{
+          PROTECT(elem=coerceVector(destl,INTSXP)); pc++;
+          INTEGER(elem)[0]++;
+          srcl=setListElement(srcl,CHAR(STRING_ELT(elist,i-1+2*m)),elem);
+        }
       }
-    }
-    SET_VECTOR_ELT(acl,i,list);   /*Install the updated list*/
-    if(pc>1000){             /*If the stack is getting out of hand, fix it*/
-      UNPROTECT(pc-3); pc=3;
+      SET_VECTOR_ELT(acl,i,list);   /*Install the updated list*/
+      if(pc>1000){             /*If the stack is getting out of hand, fix it*/
+        UNPROTECT(pc-3); pc=3;
+      }
     }
   }
 
@@ -319,7 +332,7 @@ present (or not well-defined), a negative value is returned.*/
 }
 
 
-SEXP acl_ps_R(SEXP elist, SEXP n)
+SEXP acl_ps_R(SEXP elist, SEXP n, SEXP oldps)
 /*Build a list of P-shift changescores over time.  The output is in the form
 of an acl, namely a list with the structure
   shifttype
@@ -334,9 +347,14 @@ in that iteration would not result in an additional P-shift of the indicated
 type.  (There are, hence, no ties for the first event, since it cannot create
 P-shifts.)  Otherwise, this routine has the same basic assumptions as 
 accum_ps_R.
+
+If oldps is given, it is assumed to contain a structure of the identical type
+to the output of this function, for a subset of elist; in this case, oldps
+is then extended to include the new events.  (Obviously, elist needs to include
+everything in oldps.)
 */
 {
-  int i,j,k,m,pc=0,src,dest,in,pst,pctemp;
+  int i,j,k,m,om=0,pc=0,src,dest,in,pst,pctemp,pctemp2;
   SEXP psl,elem,elem2,lptrs[13];
   char ss[50],sd[50],*snames[13] = {"ABBA","ABB0","ABBY","A0X0","A0XA","A0XY", "ABX0","ABXA","ABXB","ABXY","A0AY","ABA0","ABAY"};
   
@@ -351,14 +369,26 @@ accum_ps_R.
     PROTECT(psl=setListElement(psl,snames[i],elem)); pc++;
   }
 
-  /*Write empty lists in place for the first iteration (no shifts)*/
-  for(i=0;i<13;i++){
-    PROTECT(elem=allocVector(VECSXP,0)); pc++;
-    SET_VECTOR_ELT(VECTOR_ELT(psl,i),0,elem);
-  }  
-  
+  /*Initialize/move over existing stuff*/
+  if(oldps!=R_NilValue){
+    om=length(VECTOR_ELT(oldps,0));
+    if(m<om)
+     error("New elist length (%d) was shorter than old one (%d) in acl_ps_R.  Don't do that.\n",m,om);
+    for(i=0;i<13;i++)
+      for(j=0;j<om;j++){
+        SET_VECTOR_ELT(VECTOR_ELT(psl,i),j,VECTOR_ELT(VECTOR_ELT(oldps,i),j));
+      }
+  }else{
+    /*Write empty lists in place for the first iteration (no shifts)*/
+    for(i=0;i<13;i++){
+      PROTECT(elem=allocVector(VECSXP,0)); pc++;
+      SET_VECTOR_ELT(VECTOR_ELT(psl,i),0,elem);
+    }  
+    om=1;
+  }
+
   /*Walk through the event list, accumulating changescores as we go*/
-  for(i=1;i<m;i++){
+  for(i=om;i<m;i++){
 //    Rprintf("Event %d\n",i);
     /*Get source/dest pair from the last event*/
     PROTECT(elem=allocVector(STRSXP,1));
@@ -372,6 +402,7 @@ accum_ps_R.
     UNPROTECT(4);
 //    Rprintf("\t%d -> %d\n",src,dest);
     /*Create the lists for this iteration*/
+    pctemp=pc;
     for(j=0;j<13;j++){
       PROTECT(lptrs[j]=allocVector(VECSXP,0)); pc++;
     }
@@ -381,7 +412,7 @@ accum_ps_R.
         if(j!=k){              /*We assume no self-ties here*/
           pst=pshiftclassify(src,dest,j,k);  /*What shift is this?*/
           if(pst>=0){    /*If a shift would occur, add it to the list*/
-            pctemp=pc;
+            pctemp2=pc;
             snprintf(ss,50,"%d",j);   /*Create source string*/
             snprintf(sd,50,"%d",k);   /*Create dest string*/
             PROTECT(elem=allocVector(REALSXP,1)); pc++;  /*Create new entry*/
@@ -393,14 +424,17 @@ accum_ps_R.
             PROTECT(elem2=setListElement(elem2,sd,elem)); pc++;  /*set entry*/
             PROTECT(lptrs[pst]=setListElement(lptrs[pst],ss,elem2)); pc++;
             SET_VECTOR_ELT(VECTOR_ELT(psl,pst),i,lptrs[pst]);
-            UNPROTECT(pc-pctemp);
-            pc=pctemp;
+            UNPROTECT(pc-pctemp2);
+            pc=pctemp2;
           }  
         }
     }
     /*Write the lists into place*/
     for(j=0;j<13;j++)
       SET_VECTOR_ELT(VECTOR_ELT(psl,j),i,lptrs[j]);
+    /*Unprotect the temp lists, now that they are assigned*/
+    UNPROTECT(pc-pctemp);
+    pc=pctemp;
   }
 
   /*Unprotect and return*/
@@ -410,16 +444,20 @@ accum_ps_R.
 }
 
 
-SEXP accum_rrl_R(SEXP elist)
+SEXP accum_rrl_R(SEXP elist, SEXP oldrrl)
 /*Build list of accumulated incoming and outgoing recency-ranked communications.
 Specifically, the output is a nested list whose first dimension is in vs out,
 second dimension is iteration, third dimension is vertex, and fourth
 dimension (where applicable) is a recency ordered vector of communication
 partners (most recent to least recent).  This structure is built from
 the edgelist matrix, rather than the acl, due to the fact that this task
-is much easier to perform for the former than the latter.*/
+is much easier to perform for the former than the latter.
+
+If oldrrl is given, then entries from this are used before adding entries for
+newer time points; elist should include the history indexed by oldrrl, plus
+any new time steps.*/
 {
-  int i,m,pc=0,src,dest;
+  int i,m,om=0,pc=0,src,dest;
   SEXP ircl,orcl,rrl,elem,elem2,il,ol;
   
   /*Perform initial setup*/
@@ -427,13 +465,31 @@ is much easier to perform for the former than the latter.*/
   PROTECT(elist=coerceVector(elist,STRSXP)); pc++;
   PROTECT(ircl=allocVector(VECSXP,m)); pc++;
   PROTECT(orcl=allocVector(VECSXP,m)); pc++;
+  if(oldrrl!=R_NilValue){                    /*Transfer old list elements*/
+    elem=getListElement(oldrrl,"in");
+    if(length(ircl)<length(elem))
+      error("New elist shorter than old one....\n");
+    for(i=0;i<length(elem);i++)
+      SET_VECTOR_ELT(ircl,i,VECTOR_ELT(elem,i));
+    elem=getListElement(oldrrl,"out");
+    if(length(orcl)<length(elem))
+      error("New elist shorter than old one....\n");
+    for(i=0;i<length(elem);i++)
+      SET_VECTOR_ELT(orcl,i,VECTOR_ELT(elem,i));
+    om=length(elem);
+  }else{
+    om=0;
+  }
 
   /*Build incoming/outgoing recency-ordered contact lists*/
-  PROTECT(elem=allocVector(VECSXP,0)); pc++;
-  SET_VECTOR_ELT(ircl,0,elem);
-  PROTECT(elem=allocVector(VECSXP,0)); pc++;
-  SET_VECTOR_ELT(orcl,0,elem);
-  for(i=1;i<m;i++){
+  if(om==0){
+    PROTECT(elem=allocVector(VECSXP,0)); pc++;
+    SET_VECTOR_ELT(ircl,0,elem);
+    PROTECT(elem=allocVector(VECSXP,0)); pc++;
+    SET_VECTOR_ELT(orcl,0,elem);
+    om++;
+  }
+  for(i=om;i<m;i++){
     PROTECT(il=duplicate(VECTOR_ELT(ircl,i-1))); pc++;  /*Copy the old lists*/
     PROTECT(ol=duplicate(VECTOR_ELT(orcl,i-1))); pc++;
     PROTECT(elem=allocVector(STRSXP,1)); pc++;          /*Possibly the worst*/
@@ -489,7 +545,7 @@ is much easier to perform for the former than the latter.*/
 }
 
 
-SEXP acl_tri_R(SEXP acl)
+SEXP acl_tri_R(SEXP acl, SEXP oldtri)
 /*Return a list of pseudo-adjacencies reflecting triadic (really, 2-path) 
 properties:
  $ "top"|"tip"|"sop"|"sip"
@@ -497,9 +553,13 @@ properties:
                                 $ ego
                                       $ alter
                                               $ count
+
+If oldtri is given, then the triangle structure contained is extended for the
+length of acl.  This allows a triadic structure to be updated without completely
+recomputing it.
 */
 {
-  int i,j,k,l,g,pc=0,pc2=0;
+  int i,j,k,l,g,pc=0,pc2=0,om=0;
   SEXP tri,top,tip,sop,sip,list,alt,lnam,altnam,alt2,alt2nam,elem,elem2,elem3;
 
   /*Allocate memory for the triad lists*/
@@ -507,9 +567,34 @@ properties:
   PROTECT(tip=allocVector(VECSXP,length(acl))); pc++;
   PROTECT(sop=allocVector(VECSXP,length(acl))); pc++;
   PROTECT(sip=allocVector(VECSXP,length(acl))); pc++;
+  if(oldtri!=R_NilValue){                                /*If there is an old object, move list elements over*/
+    alt=getListElement(oldtri,"top");
+    if(length(top)<length(alt))
+      error("New acl shorter than old one....\n");
+    for(i=0;i<length(alt);i++)
+      SET_VECTOR_ELT(top,i,VECTOR_ELT(alt,i));
+    alt=getListElement(oldtri,"tip");
+    if(length(tip)<length(alt))
+      error("New acl shorter than old one....\n");
+    for(i=0;i<length(alt);i++)
+      SET_VECTOR_ELT(tip,i,VECTOR_ELT(alt,i));
+    alt=getListElement(oldtri,"sop");
+    if(length(sop)<length(alt))
+      error("New acl shorter than old one....\n");
+    for(i=0;i<length(alt);i++)
+      SET_VECTOR_ELT(sop,i,VECTOR_ELT(alt,i));
+    alt=getListElement(oldtri,"sip");
+    if(length(sip)<length(alt))
+      error("New acl shorter than old one....\n");
+    for(i=0;i<length(alt);i++)
+      SET_VECTOR_ELT(sip,i,VECTOR_ELT(alt,i));
+    om=length(alt);
+  }else{                                           /*Otherwise, use new lists*/
+    om=0;
+  }
 
-  /*Walk through the iterations*/
-  for(i=0;i<length(acl);i++){
+  /*Walk through the (new) iterations*/
+  for(i=om;i<length(acl);i++){
     list=VECTOR_ELT(acl,i);
     lnam=getAttrib(list,R_NamesSymbol);
     /*Get the inbound/outbound two-paths*/
@@ -1786,6 +1871,8 @@ the event-wise deviance residuals and predicted events.*/
           lrsum+=exp(lrjk+ldt);             /*Increment the survival sum*/
         }
     *dc=2.0*lrsum;
+  }else{
+    *dc=0.0;
   }
 
   /*Add deviance residuals and prediction information to the output list*/
@@ -1814,6 +1901,10 @@ likelihood).  Arguments are as follows:
   val - pre-allocated slot for the deviance value (length 1)
   grad - pre-allocated slot for the gradient (length npar)
   hess - pre-allocated slot for the hessian (npar x npar)
+
+  Note that although this function is intended to be used to obtain the
+  deviance, it itself actually calculates the log likelihood; the conversion
+  to deviance is done on the R side.  
 */
 {
   int i,j,k,l,m,net,npar;
@@ -1867,6 +1958,73 @@ likelihood).  Arguments are as follows:
 }
 
 
+void rem_int_ev_dev_R(double *par, int *pnpar, double *ev, double *statsm, int *pnet, int *suppv, int *calcderiv, double *val, double *grad, double *hess, int *initvals)
+/*Deviance calculation for a single event in a general-form event sequence (interval timing
+likelihood).  Arguments are as follows:
+  par - vector of parameters (pre-mapped, if that was required)
+  pnpar - length of par
+  ev - event vector (length 2, 1st element is type code (0=exog), 2nd is time since last event)
+  statsm - stats matrix (net x npar)
+  pnet - number of event types (not including the 0th type)
+  suppv - support vector (length net, 1 if possible, 0 if not possible)
+  calcderiv - 1 if derivatives should be calculated, 0 otherwise
+  val - pre-allocated slot for the deviance value (length 1)
+  grad - pre-allocated slot for the gradient (length npar)
+  hess - pre-allocated slot for the hessian (npar x npar)
+  initvals - 1 if we should initialize val/grad/etc., 0 otherwise
+
+  Note that although this function is intended to be used to obtain the
+  deviance, it itself actually calculates the log likelihood; the conversion
+  to deviance is done on the R side.  
+*/
+{
+  int i,j,k,l,net,npar;
+  double dt,lp,dtelp;
+ 
+  /*Initialize stuff*/
+  net=*pnet;
+  npar=*pnpar;
+  if(*initvals){  /*If needed, initialize value/gradient/hessian*/
+    *val=0.0;
+    if(*calcderiv){
+      for(i=0;i<npar;i++){
+        grad[i]=0.0;
+        for(j=0;j<npar;j++)
+          hess[i+j*npar]=0.0;
+      }
+    }
+  }
+  
+  /*Perform the deviance calculations*/
+  dt=ev[1];                                   /*Get the time since last event*/
+  for(j=0;j<net;j++)                          /*Walk through each event type...*/
+    if(suppv[j]){                             /*...ignoring impossible events. */
+      /*Calculate the linear predictor for this (potential) event*/
+      for(k=0,lp=0.0;k<npar;k++)
+        lp+=par[k]*statsm[j+k*net];
+      dtelp=dt*exp(lp);               /*Save a few operations by precomputing*/
+      /*If this is the observed event, increment value and gradient*/
+      if(((int)ev[0])==j+1){
+        *val+=lp;                                /*Add log hazard to deviance*/
+        if(*calcderiv)                           /*Add raw stats to gradient*/
+          for(k=0;k<npar;k++)
+            grad[k]+=statsm[j+k*net];
+      }
+      /*Observed or not, add increments from survival function*/
+      *val-=dtelp;
+      if(*calcderiv){
+        for(k=0;k<npar;k++){
+          grad[k]-=statsm[j+k*net]*dtelp;
+          for(l=k;l<npar;l++){
+            hess[k+l*npar]-=statsm[j+k*net]*statsm[j+l*net]*dtelp;
+            hess[l+k*npar]=hess[k+l*npar];
+          }
+        }
+      }
+    }
+}
+
+
 void rem_ord_dev_R(double *par, int *pnpar, int *evm, int *pm, double *statsa, int *pnet, int *suppm, int *calcderiv, double *val, double *grad, double *hess)
 /*Deviance calculation for a single general-form event sequence (ordinal timing
 likelihood).  Arguments are as follows:
@@ -1881,6 +2039,10 @@ likelihood).  Arguments are as follows:
   val - pre-allocated slot for the deviance value (length 1)
   grad - pre-allocated slot for the gradient (length npar)
   hess - pre-allocated slot for the hessian (npar x npar)
+  
+  Note that although this function is intended to be used to obtain the
+  deviance, it itself actually calculates the log likelihood; the conversion
+  to deviance is done on the R side.  
 */
 {
   int i,j,k,l,m,net,npar;
@@ -1952,4 +2114,55 @@ likelihood).  Arguments are as follows:
       for(k=j+1;k<npar;k++)
         hess[k+j*npar]=hess[j+k*npar];
   }
+}
+
+
+SEXP lambda_R(SEXP pv, SEXP iter, SEXP effects, SEXP n, SEXP nev, SEXP acl, SEXP cumideg, SEXP cumodeg, SEXP rrl, SEXP covar, SEXP ps, SEXP tri, SEXP lrm)
+/*Calculate dyadic event log-rates under the relational event model, for a
+specified iteration.  These are stored in the log-rate matrix, lrm, which
+is also returned.  The arguments are as follows:
+
+pv - parameter vector
+iter - the iteration to use (employed when consulting past history)
+effects - logical vector of included effects
+n - number of vertices
+nev - number of events in the current history
+acl - accumulated local communication list
+cumideg - accumulated indegree
+cumodeg - accumulated outdegree
+rrl - recency lists
+covar - covariates
+ps - pshift indicators
+tri - accumulated triadic effects
+lrm - n x n hazard matrix
+
+Note that this is just an interface to lambda.  Using it dynamically is
+not efficient, but it's a thing that can be done.
+*/
+{
+  int pc=0,it,nv,m;
+
+  /*Validate the inputs*/
+  PROTECT(nev=coerceVector(nev,INTSXP)); pc++;
+  m=INTEGER(nev)[0];
+  PROTECT(n=coerceVector(n,INTSXP)); pc++;
+  nv=INTEGER(n)[0];
+  PROTECT(iter=coerceVector(iter,INTSXP)); pc++;
+  it=INTEGER(iter)[0];
+  if(it<1)
+    error("Can't compute on iteration number <1.\n");
+  if(it>m)
+    error("Can't compute on iteration number >nev.\n");
+  PROTECT(lrm=coerceVector(lrm,REALSXP)); pc++;
+  PROTECT(pv=coerceVector(pv,REALSXP)); pc++;
+  PROTECT(effects=coerceVector(effects,LGLSXP)); pc++;
+  PROTECT(cumideg=coerceVector(cumideg,REALSXP)); pc++;
+  PROTECT(cumodeg=coerceVector(cumodeg,REALSXP)); pc++;
+
+  /*Call lambda*/
+  lambda(pv, it-1, effects, nv, m, acl, cumideg, cumodeg, rrl, covar, ps, tri, lrm);
+
+  /*Unprotect and return*/
+  UNPROTECT(pc);
+  return lrm;
 }

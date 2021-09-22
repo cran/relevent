@@ -1,4 +1,23 @@
 CHANGELOG:
+v1.1 - Changes, New Features, and Bug Fixes
+  New Features:
+    - A simulate() method has been added for rem.dyad; it should
+      support all rem.dyad families, although it is not always fast.
+    - Relatedly, rem.dyad can now be used to produce "skeleton" models
+      for use with simulate(); these can be used to perform ab initio
+      simulation.
+  Changes:
+    - Changed default name given to each list for multiple event lists in 
+      REM (was "Ego n," now "Sequence n").
+    - Stack usage has been reduced in many cases, which should reduce 
+      overflow errors for sequences with very large numbers of events.R_NativePrimitiveArgType
+    - C entry points are now registered, per coercion.
+  Bug Fixes:
+    - rem.dyad in some cases gave incorrect deviance values for ordinal models
+      when gof=TRUE.
+    - Standard errors reported for fit.method==MLE were off by a factor of 2
+      (BPM and other methods are unchanged).
+      
 v1.0-4 - Changes and Bug Fixes
   Changes:
     - Minor (non-visible) changes to ensure CRAN compliance.

@@ -4,7 +4,7 @@
 #
 # Written by Carter T. Butts <buttsc@uci.edu>.
 #
-# Last Modified 3/08/15
+# Last Modified 9/12/21
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/relevent package
@@ -118,8 +118,9 @@ rem.ord.nlp<-function(par,pmapl,evl,statsl,suppl,ppar,ret.deriv,verbose,...){
 }
 
 
-#Interval version of the above -- use timing information, and take exogenous events
+#Interval version of the interval dev -- use timing information, and take exogenous events
 #into account directly (via inter-event survival function).
+#This version was used in 1.0-4
 rem.int.dev<-function(par,pmapl,evl,statsl,suppl,ret.deriv,verbose,...){
   np<-length(par)
   val<-0
@@ -152,6 +153,50 @@ rem.int.dev<-function(par,pmapl,evl,statsl,suppl,ret.deriv,verbose,...){
   else
     val
 }
+#The following version is experimental, and works per event
+#Was slated for 1.0-5 -> 1.1, but needs more debugging
+#rem.int.dev<-function(par,pmapl,evl,statsl,suppl,ret.deriv,verbose,...){
+#  np<-length(par)
+#  val<-0
+#  if(ret.deriv){
+#    grad<-rep(0,np)
+#    hess<-matrix(0,np,np)
+#  }
+#  #Calculate contributions from each event set
+#  for(i in 1:length(statsl)){
+#    p<-par[pmapl[[i]]]            #Model parameters
+#    np2<-length(p)                #Number of parameters
+#    edt<-c(evl[[i]][1,2],diff(evl[[i]][,2]))  #Time increments per event
+#    val<-0                        #LL Value
+#    grad<-rep(0,np2)              #LL Gradient
+#    hess<-matrix(0,np2,np2)       #LL Hessian
+#    for(j in 1:NROW(evl[[i]])){   #Walk through each event
+#      if(is.list(statsl[[i]]))    #Get the stats matrix (coercing if needed)
+#        statsm<-as.matrix(statsl[[i]][[j]])
+#      else
+#        statsm<-statsl[[i]][j,,]
+#      calc<-.C("rem_int_ev_dev_R",as.double(p),as.integer(np2),as.double(c(evl[[i]][j,1],edt[j])), as.double(statsm),as.integer(NROW(statsm)),as.integer(suppl[[i]][j,]),as.integer(ret.deriv),val=as.double(val),grad=as.double(grad),hess=as.double(hess),as.integer(FALSE), PACKAGE="relevent",NAOK=TRUE)
+#      val<-val-2*calc$val
+#      if(ret.deriv){
+#        grad[pmapl[[i]]]<-grad[pmapl[[i]]]-2*calc$grad
+#        hess[pmapl[[i]],pmapl[[i]]]<-hess[pmapl[[i]],pmapl[[i]]]-2*calc$hess
+#      }
+#    }
+#  }
+#  #Return the result
+#  if(verbose){
+#    cat("Printing deviance output\n")
+#    print(val)
+#    if(ret.deriv){
+#      print(grad)
+#      print(hess)
+#    }
+#  }
+#  if(ret.deriv)
+#    list(value=val,gradient=grad,hessian=hess)
+#  else
+#    val
+#}
 
 #Negative log-posterior, currently using a t prior
 rem.int.nlp<-function(par,pmapl,evl,statsl,suppl,ppar,ret.deriv,verbose,...){
@@ -232,9 +277,9 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
     supplist<-supplist[sel]
   }
   #Initial setup
-  listnam<-names(eventlist)                              #Ego names
+  listnam<-names(eventlist)                              #Sequence names
   if(is.null(listnam))
-    listnam<-paste("Ego",1:length(eventlist),sep="")
+    listnam<-paste("Sequence",1:length(eventlist),sep="")
   pmapl<-list()                                          #Global vars
   statsl<-list()
   if(is.null(statslist[[1]]$global)){
@@ -401,11 +446,11 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
   if(match.arg(estimator)=="BSIR"){
     if(verbose)
         cat("Taking posterior draws using resampling\n")
-    fit$cov.hess<-try(qr.solve(fit$hessian))
+    fit$cov.hess<-try(solve(fit$hessian))
     cf<-try(chol(fit$cov.hess))
     if(class(cf)=="try-error")
       stop("Couldn't conduct posterior resampling because estimated covariance matrix was singular; suggest that you examine this model more closely.\n")
-    is<-qr.solve(fit$cov.hess)
+    is<-solve(fit$cov.hess)
     ds<-det(fit$cov.hess)
     draws<-matrix(0,sir.draws*sir.expand,np)
     iw<-vector()
@@ -440,7 +485,7 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
     )
   }
   if(match.arg(estimator)%in%c("MLE","BPM")){  #Mode cases
-    fit$cov<-try(qr.solve(fit$hessian))
+    fit$cov<-try(solve(fit$hessian*(1-0.5*(match.arg(estimator)=="MLE"))))
     try(rownames(fit$cov)<-parnam)
     try(colnames(fit$cov)<-parnam)
     if(match.arg(estimator)=="MLE"){
