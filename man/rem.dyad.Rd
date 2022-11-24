@@ -28,7 +28,8 @@ rem.dyad(edgelist, n, effects = NULL, ordinal = TRUE, acl = NULL,
 \method{print}{rem.dyad}(x, ...)
 \method{summary}{rem.dyad}(object, ...) 
 \method{simulate}{rem.dyad}(object, nsim = object$m, seed = NULL, 
-    coef = NULL, covar = NULL, verbose = FALSE, ...)
+    coef = NULL, covar = NULL, edgelist = NULL, redraw.timing = FALSE,
+    redraw.events = FALSE, verbose = FALSE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -63,6 +64,8 @@ rem.dyad(edgelist, n, effects = NULL, ordinal = TRUE, acl = NULL,
   \item{nsim}{ number of events to simulate (defaults to the observed sequence length in the fitted model). }
   \item{seed}{ random number seed to use for simulation. }
   \item{coef}{ optional vector of coefficients to override those in the fitted model object, for simulation purposes.}
+  \item{redraw.timing}{ logical; should any prespecified events in \code{edgelist} have their timings redrawn during simulation? }
+  \item{redraw.events}{ logical; should any prespecified events in \code{edgelist} have their senders and receivers redrawn during simulation? }
   \item{...}{additional arguments.}
 }
 \details{
@@ -122,9 +125,11 @@ Note that \dQuote{time varying} covariates may only change values when events tr
 If called with \code{edgelist==NULL}, \code{rem.dyad} will produce a \dQuote{model skeleton} object containing the effects and other information, but no model fit.  (The seed coefficients, if given, are entered as the coefficients in the model, or else an uninteresting default set is used.)  The main purpose for this object is to set up an \emph{ab initio} simulation, as described below: once the skeleton is created, the \code{\link{simulate}} method can be used to generate draws from that model (without fitting to a data set).
 
 A \code{\link{simulate}} method is provided for \code{rem.dyad} objects, which allows simulation of new event sequences from a fitted or skeleton model.  By default, a new sequence of length equal to the original sequence to which the model object was fitted is simulated (if applicable), but other lengths may be chosen using \code{nsim}.  Although the coefficients in the model object are used by default, this may also be altered by specifying \code{coef}.  Note that any covariates used must be passed to the simulate command via \code{covar} (using the same format as in the original model); this is in part because \code{rem.dyad} objects do not currently save their input data, and in part because dynamic covariates must always be the length of the simulated sequence (and hence must be factored when a non-default \code{nsim} value is used).  For models fit using \code{ordinal=TRUE}, the overall pacing of events will be arbitrary (more specifically, the simulation will tacitly assume that each event has a unit base hazard), but the relative timing is not.  See below for examples of both simulation using a fitted model object and \emph{ab initio} simulation without fitting a model to data.
+
+For simulation, it is possible to fix the first portion of the event history by passing an event list matrix to the \code{edgelist} argument; this must be compatible with the target model (i.e., the vertex IDs must match), and it cannot contain \code{NA} values.  (Thus, if starting with an exact timing seqence with a last line containing \code{NA}s, this must be removed.)  If the input event list contains \code{m} events, then these are assumed to supply the first \code{m} events of the target sequence; if \code{m>nsim}, then any excess events are discarded.  By default, the input events are taken as fixed.  However, specifying \code{redraw.timing=TRUE} will lead the event timings to be redrawn, and \code{redraw.events} will lead the sender/reciver pairs to be redrawn.  This allows e.g. for an observed ordinal time sequence to be given a simulated exact time realization, by setting \code{nsim} to the event list length and setting \code{redraw.timing=TRUE}.  The more obvious use case is to simply extend an observed sequence, in which case one should use \code{nsim} greater than the input sequence length (i.e., the input length plus the number of new events to generate) and leave the \code{redraw} paraeters set to \code{FALSE}.  
 }
 \value{
-An object of class \code{rem.dyad}.
+For \code{rem.dyad}, an object of class \code{rem.dyad}.  For the \code{simulate} method, an event list.
 %  ~Describe the value returned
 %  If it is a LIST, use
 %  \item{comp1 }{Description of 'comp1'}
@@ -204,6 +209,21 @@ plot(esnd,tabulate(sim[,2]),xlab="Expected Out-events",ylab="Out-events")
 abline(0,1,col=2)
 plot(erec,tabulate(sim[,3]),xlab="Expected In-events",ylab="In-events")
 abline(0,1,col=2)
+
+#Keep the first 10 events of the simulated sequence, and produce 10 more
+sim.pre<-sim[1:10,]
+sim2<-simulate(fit.time,nsim=20,edgelist=sim.pre)
+sim.pre                            #See the first 10 events
+sim2                               #First 10 events preserved
+all(sim2[1:10,]==sim.pre)          #All TRUE
+
+#Repeat, but redrawing part of the input sequence
+sim2.t<-simulate(fit.time,nsim=20,edgelist=sim.pre,redraw.timing=TRUE)
+sim2.e<-simulate(fit.time,nsim=20,edgelist=sim.pre,redraw.events=TRUE)
+sim2.t                             #Events kept, timings not
+sim2.t[1:10,]==sim.pre             #Second two columns TRUE
+sim2.e                             #Timing kept, events not
+sim2.e[1:10,]==sim.pre             #(Note: some events may repeat by chance!)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

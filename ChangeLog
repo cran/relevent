@@ -1,4 +1,14 @@
 CHANGELOG:
+v1.2 - Changes, New Functions, and New Features
+  Changes:
+    - Minor (non-visible) changes to ensure PROTECT compliance.
+  New Functions:
+    - as.sociomatrix.eventlist: converts an event list to a time-marginalized
+      adjacency matrix.
+  New Features:
+    - The simulate() method for rem.dyad now supports conditioning on initial
+      events (sender/receivers, timing, or both).
+
 v1.1 - Changes, New Features, and Bug Fixes
   New Features:
     - A simulate() method has been added for rem.dyad; it should

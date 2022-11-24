@@ -4,7 +4,7 @@
 #
 # Written by Carter T. Butts <buttsc@uci.edu>.
 #
-# Last Modified 9/13/21
+# Last Modified 11/23/22
 # Licensed under the GNU General Public License version 2 (June, 1991)
 #
 # Part of the R/relevent package
@@ -706,9 +706,16 @@ summary.rem.dyad<-function(object, ...){
 #a trajectory of length nsim from it.  Existing coefficients may be
 #overridden by passing coef; if covariates are present, they must be
 #passed with covar, since they are not stored in the object.  Note that
-#if time-varying covarites are used, the length of the covariate series
-#must be equal to nsim.  The return value is an event list.
-simulate.rem.dyad<-function(object, nsim=object$m, seed=NULL, coef=NULL, covar=NULL, verbose=FALSE, ...){
+#if time-varying covariates are used, the length of the covariate series
+#must be equal to nsim.  If an edgelist is supplied, this is taken to 
+#give the first portion of the simulated history (i.e., if the list has
+#length m, then it provides the first m events and nsim-m new events are
+#added to it).  The arguments redraw.timing and redraw.events can be used
+#to selectively redraw only the timing or only the events from such
+#precomputed sequences (perhaps useful if one e.g. is attempting to
+#generate an exact time sequence from an observed ordinal time sequence).
+#The return value is an event list.
+simulate.rem.dyad<-function(object, nsim=object$m, seed=NULL, coef=NULL, covar=NULL, edgelist=NULL, redraw.timing=FALSE, redraw.events=FALSE, verbose=FALSE, ...){
   #Set seed, if desired
   if(!is.null(seed))
     set.seed(seed)
@@ -723,6 +730,24 @@ simulate.rem.dyad<-function(object, nsim=object$m, seed=NULL, coef=NULL, covar=N
   covar<-covarPrep(covar,n=n,m=nsim,effects=effects)
   #Set up event list and other objects
   el<-matrix(0,nrow=nsim,ncol=3)
+  if(is.null(edgelist)){        #Do we have precomputed events to include?
+    m.precomp<-0
+  }else{
+    #Validate the precomputed event list
+    if(NCOL(edgelist)!=3){
+      stop("Precomputed edgelist must be a three-column matrix.\n")
+    }
+    edgelist<-apply(edgelist,1:2,as.numeric)
+    if(any(is.na(edgelist)))
+      stop("Illegal values in precomputed edgelist.\n")
+    if(!all(edgelist[,2]%in%(1:n)))
+      stop("Precomputed edgelist contains illegal senders.\n")
+    if(!all(edgelist[,3]%in%(1:n)))
+      stop("Precomputed edgelist contains illegal receivers.\n")
+    #OK, guess we can go ahead
+    m.precomp<-min(nsim,NROW(edgelist))
+    el[1:m.precomp,]<-edgelist
+  }
   acl<-NULL
   rrl<-NULL
   ps<-NULL
@@ -758,20 +783,29 @@ simulate.rem.dyad<-function(object, nsim=object$m, seed=NULL, coef=NULL, covar=N
         acl<-accum.interact(el[1:i,,drop=FALSE],old.acl=acl)
       tri<-acl.tri(acl,old.tri=tri)
     }
-    #Generate the log rate matrix
-    lrm<-rem.dyad.lambda(pv=pv, iter=i, effects=effects, n=n, m=i, acl=acl, cumideg=cumideg, cumodeg=cumodeg, rrl=rrl, covar=covar, ps=ps, tri=tri)
-    diag(lrm)<--Inf
-    allev<-cbind(as.vector(row(lrm)),as.vector(col(lrm)),as.vector(lrm))
-    allev<-allev[is.finite(allev[,3]),,drop=FALSE]
-    #Generate the event time
-    tls<-sna::logSum(allev[,3]) #Total log sum
-    time<-time+rexp(1,exp(tls))
-    el[i,1]<-time
+    #Generate the log rate matrix, if we need it
+    if((i>m.precomp)||redraw.timing||redraw.events){
+      lrm<-rem.dyad.lambda(pv=pv, iter=i, effects=effects, n=n, m=i, acl=acl, cumideg=cumideg, cumodeg=cumodeg, rrl=rrl, covar=covar, ps=ps, tri=tri)
+      diag(lrm)<--Inf
+      allev<-cbind(as.vector(row(lrm)),as.vector(col(lrm)),as.vector(lrm))
+      allev<-allev[is.finite(allev[,3]),,drop=FALSE]
+      tls<-sna::logSum(allev[,3]) #Total log sum
+     }
+    #Generate the event time, unless we are using a precomputed one
+    if((i>m.precomp)||redraw.timing){
+      time<-time+rexp(1,exp(tls))
+      el[i,1]<-time
+    }else{
+      time<-el[i,1]               #If precomputed, need to update time
+    }
     #Generate the event sender/recevier
-    allev[,3]<-exp(allev[,3]-tls)      #Event probabilities
-    el[i,2:3]<-allev[sample(1:NROW(allev),1,prob=allev[,3]),1:2]
+    if((i>m.precomp)||redraw.events){
+      allev[,3]<-exp(allev[,3]-tls)      #Event probabilities
+      el[i,2:3]<-allev[sample(1:NROW(allev),1,prob=allev[,3]),1:2]
+    }
   }
   #Finished!  Return the resulting edge list
   attr(el,"n")<-n
   el
 }
+

@@ -4,7 +4,7 @@
 # utils.c
 #
 # Written by Carter T. Butts <buttsc@uci.edu>
-# Last Modified 5/2/06
+# Last Modified 11/23/22
 # Licensed under the GNU General Public License version 2 (June, 1991)
 # or later
 #
@@ -66,7 +66,7 @@ SEXP deleteListElement(SEXP list, const char *str)
   if(length(list)==0)
     return list;
   /*Evidently, we should try searching for the element...*/
-  names=getAttrib(list, R_NamesSymbol);
+  PROTECT(names=getAttrib(list, R_NamesSymbol)); pc++;
   PROTECT(newlist=allocVector(VECSXP,length(list)-1)); pc++;
   PROTECT(newnames=allocVector(STRSXP,length(list)-1)); pc++;
   flag=0;

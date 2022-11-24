@@ -448,7 +448,7 @@ rem<-function(eventlist,statslist,supplist=NULL,timing=c("ordinal","interval"),e
         cat("Taking posterior draws using resampling\n")
     fit$cov.hess<-try(solve(fit$hessian))
     cf<-try(chol(fit$cov.hess))
-    if(class(cf)=="try-error")
+    if(inherits(cf,"try-error"))
       stop("Couldn't conduct posterior resampling because estimated covariance matrix was singular; suggest that you examine this model more closely.\n")
     is<-solve(fit$cov.hess)
     ds<-det(fit$cov.hess)
