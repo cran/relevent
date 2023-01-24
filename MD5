@@ -1,5 +1,5 @@
-75a23ef3eaae63ee31ceb85342137596 *ChangeLog
-9d128a27cd0b19108ad465335b01a11a *DESCRIPTION
+1a2aab701ee4294345075dc417c7588f *ChangeLog
+dcbbbf6a44b554d6ed63203cc731559b *DESCRIPTION
 8bb618b66046ab2d685c0a2a3eb930ea *NAMESPACE
 41873111afbc90e82162552741db3319 *R/data.proc.R
 cc0ca4460a30223c8065290e4b478a96 *R/rem.R
@@ -11,7 +11,7 @@ f1a704f35a235a93235609e0695c8963 *man/relevent-internal.Rd
 eb5126d290ae54fdd86d0dc26815b31c *man/rem.Rd
 e629b258d475e2cbec2f538b282fa0be *man/rem.dyad.Rd
 b59e2c851653b9e30529140e94098a32 *src/init.c
-cfcaff530617394e6c9ce5a664847c38 *src/relevent.c
+0f171a4e114a109f0a94f6722f4356c4 *src/relevent.c
 c77e39ce7908e7c0fc7063616ded0c65 *src/relevent.h
 93e7912ca8a6474c256efb2935d9a161 *src/utils.c
 44613f9e6cab35097218a64c1efc4337 *src/utils.h

@@ -1,4 +1,8 @@
 CHANGELOG:
+v1.2-1 Changes
+  Changes:
+    - Minor (non-visible) changes for CRAN compliance.
+    
 v1.2 - Changes, New Functions, and New Features
   Changes:
     - Minor (non-visible) changes to ensure PROTECT compliance.

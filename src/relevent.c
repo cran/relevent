@@ -4,7 +4,7 @@
 # relevent.c
 #
 # Written by Carter T. Butts <buttsc@uci.edu>
-# Last Modified 09/13/21
+# Last Modified 01/24/23
 # Licensed under the GNU General Public License version 2 (June, 1991)
 # or later
 #
@@ -34,12 +34,12 @@ double acl_adj(SEXP acl, int src, int dest)
   
   /*Rprintf("Querying acl_adj for %d->%d\n",src+1,dest+1);*/
   /*Check to see if the source is present*/
-  sprintf(buf,"%d",src+1);
+  snprintf(buf,sizeof(buf),"%d",src+1);
   if((srclist=getListElement(acl,buf))==R_NilValue)
     return 0.0;
 
   /*If still here, check to see if the destination is present*/
-  sprintf(buf,"%d",dest+1);
+  snprintf(buf,sizeof(buf),"%d",dest+1);
   if((destlist=getListElement(srclist,buf))==R_NilValue)
     return 0.0;
 
@@ -62,7 +62,7 @@ double rrl_rank(SEXP rrl, int src, int dest, int mode)
   
   if(mode==0){ /*First look for source, then see how recent dest is*/
     /*Check to see if the source is present*/
-    sprintf(buf,"%d",src+1);
+    snprintf(buf,sizeof(buf),"%d",src+1);
     if((srclist=getListElement(rrl,buf))==R_NilValue)
       return DBL_MAX;
 
@@ -78,7 +78,7 @@ double rrl_rank(SEXP rrl, int src, int dest, int mode)
     }
   }else{       /*First look for dest, then see how recent source is*/
     /*Check to see if the destination is present*/
-    sprintf(buf,"%d",dest+1);
+    snprintf(buf,sizeof(buf),"%d",dest+1);
     if((destlist=getListElement(rrl,buf))==R_NilValue)
       return DBL_MAX;
 
